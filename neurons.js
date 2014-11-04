@@ -1,5 +1,9 @@
 // Utilities and calculations
 
+var log = function(message) {
+  console.log(message);
+};
+
 var calculateNeuronOutput = function(inputs, weights) {
   var sum = 0;
   for (var i=0; i < inputs.length; i++) {
@@ -8,24 +12,20 @@ var calculateNeuronOutput = function(inputs, weights) {
   return Math.tanh(sum);
 };
 
-var addLayerToInputs = function(layer, neuron) {
-  for (var i=0; i < layer.length; i++) {
-    neuron.addInputNeuron(layer[i], 0);
-  }
+var resetLayerCaches = function(layer) {
+  _.each(layer, function(neuron) {
+    neuron.resetCachedOutput();
+  });
 };
 
-var resetLayerCaches = function(layer) {
-  for (var i=0; i < layer.length; i++) {
-    layer[i].resetCachedOutput();
-  }
-};
+var unsetValue = undefined;
 
 // Neuron implementation
 
-var Neuron = function(bias, biasWeight) {
-	this.inputs = [bias];
-  this.weights = [biasWeight];
-  this.cachedOutput = undefined;
+var Neuron = function() {
+	this.inputs = [];
+  this.weights = [];
+  this.cachedOutput = unsetValue;
 };
 
 Neuron.prototype.addInputNeuron = function(neuron, initialWeight) {
@@ -34,72 +34,80 @@ Neuron.prototype.addInputNeuron = function(neuron, initialWeight) {
 };
 
 Neuron.prototype.getOutput = function() {
-  if (this.value == undefined) this.cachedOutput = calculateNeuronOutput(inputs, weights);
+  if (this.cachedOutput == unsetValue) this.cachedOutput = calculateNeuronOutput(this.inputs, this.weights);
   return this.cachedOutput;
 };
 
 Neuron.prototype.resetCachedOutput = function() {
-  this.value = undefined;
+  this.cachedOutput = unsetValue;
 };
 
-// InputNeuron implementation
-
-var InputNeuron = function(outputValue) {
-  this.outputValue = outputValue;
-};
-
-InputNeuron.prototype.getOutput = function() {
-  return this.outputValue;
+Neuron.prototype.setCachedOutput = function(value) {
+  this.cachedOutput = value;
 };
 
 // NeuronNetwork implementation
 
 var NeuronNetwork = function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers) {
-  this.inputLayer = [];
-  this.generateInputLayer(inputLayerWidth);
-  this.hiddenLayers = [];
-  this.generateHiddenLayers(numHiddenLayers, hiddenLayerWidth);
-  this.outputLayer = [];
-  this.generateOutputLayer(outputLayerWidth);
+  this.biasNeuron = new Neuron();
+  this.biasNeuron.setCachedOutput(1);
+  this.neuronLayers = this.generateLayers(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, this.biasNeuron, 1);
 };
 
-NeuronNetwork.prototype.generateInputLayer = function(layerWidth) {
-  for (var neuronIndex=0; neuronIndex < layerWidth; neuronIndex++) {
-    this.inputLayer.push(new InputNeuron(1));
+NeuronNetwork.prototype.generateLayers= function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, biasNeuron, biasNeuronInitialWeight) {
+  var generateLayer = function(layerWidth) {
+    log("Generating layer of width " + layerWidth);
+    return _.map(_.range(layerWidth), function(val) {
+      var neur = new Neuron();
+      neur.addInputNeuron(biasNeuron, biasNeuronInitialWeight);
+      return neur;
+    });
+  };
+
+  var connectLayers = function(closerToInput, closerToOutput) {
+    _.map(closerToInput, function(input) {
+      _.map(closerToOutput, function(output) {
+        output.addInputNeuron(input, 0);
+      });
+    });
+  };
+
+  var res = [];
+  res.push(generateLayer(inputLayerWidth));
+  for (var i=0; i < numHiddenLayers; i++) {
+    res.push(generateLayer(hiddenLayerWidth));
+    connectLayers(res[res.length-2], res[res.length-1]);
   }
+  res.push(generateLayer(outputLayerWidth));
+  connectLayers(res[res.length-2], res[res.length-1]);
+  return res;
 };
-
-NeuronNetwork.prototype.generateHiddenLayers= function(numHiddenLayers, layerWidth) {
-  for (var layerIndex=0; layerIndex < numHiddenLayers; layerIndex++) {
-    var currentLayer = [];
-    this.hiddenLayers.push(currentLayer);
-    for (var neuronIndex=0; neuronIndex < layerWidth; neuronIndex++) {
-      var currentNeuron = new Neuron(1, 1);
-      if (layerIndex == 0) {
-        addLayerToInputs(this.inputLayer, currentNeuron);
-      } else {
-        addLayerToInputs(this.hiddenLayers[layerIndex-1], currentNeuron);
-      }
-      currentLayer.push(currentNeuron);
-    }
-  }
-};
-
-NeuronNetwork.prototype.generateOutputLayer = function(layerWidth) {
-  var lastHiddenLayer = this.hiddenLayers[this.hiddenLayers.length-1];
-  for (var neuronIndex=0; neuronIndex < layerWidth; neuronIndex++) {
-    var currentNeuron = new Neuron(1, 1);
-    addLayerToInputs(lastHiddenLayer, currentNeuron);
-  }
-  this.outputLayer.push(currentNeuron);
-
-};
-
 
 NeuronNetwork.prototype.resetCachedOutputs = function() {
-
-  for (var i=0; i < hiddenLayers.length; i++) {
-    resetLayerCaches(hiddenLayers[i]);
+  for (var i=0; i < this.neuronLayers.length; i++) {
+    resetLayerCaches(this.neuronLayers[i]);
   }
-
 };
+
+NeuronNetwork.prototype.getOutputLayer = function() {
+  return this.neuronLayers[this.neuronLayers.length-1];
+};
+
+NeuronNetwork.prototype.getInputLayer = function() {
+  return this.neuronLayers[0];
+};
+
+NeuronNetwork.prototype.evaluate = function(inputValues) {
+  var inputLayer = this.getInputLayer();
+  if (inputValues.length != inputLayer.length) {
+    throw "Inputs array must be the same length as input layer"
+  }
+  this.resetCachedOutputs();
+  for (var i=0; i < inputLayer.length; i++) {
+    inputLayer[i].setCachedOutput(inputValues[i]);
+  }
+  return _.map(this.getOutputLayer(), function(neuron) {
+    return neuron.getOutput();
+  });
+};
+
