@@ -4,12 +4,17 @@ var log = function(message) {
   console.log(message);
 };
 
+var sigmoid = function(n) {
+    return 1/(1+Math.pow(Math.E, -n));
+}
+
 var calculateNeuronOutput = function(inputs, weights) {
   var sum = 0;
   for (var i=0; i < inputs.length; i++) {
     sum += (weights[i] * inputs[i].getOutput());
   };
-  return Math.tanh(sum);
+  return sigmoid(sum);
+  //return Math.tanh(sum);
 };
 
 var resetLayerCaches = function(layer) {
@@ -50,7 +55,7 @@ Neuron.prototype.setCachedOutput = function(value) {
 
 var NeuronNetwork = function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers) {
   this.biasNeuron = new Neuron();
-  this.biasNeuron.setCachedOutput(1);
+  this.biasNeuron.setCachedOutput(-1);
   this.neuronLayers = this.generateLayers(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, this.biasNeuron, 1);
 };
 
@@ -67,7 +72,7 @@ NeuronNetwork.prototype.generateLayers= function(inputLayerWidth, outputLayerWid
   var connectLayers = function(closerToInput, closerToOutput) {
     _.map(closerToInput, function(input) {
       _.map(closerToOutput, function(output) {
-        output.addInputNeuron(input, 0);
+        output.addInputNeuron(input, Math.random()-0.5);
       });
     });
   };
