@@ -107,7 +107,7 @@ var NeuronNetwork = function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth
   if (outputLayerWidth < 1) throw "Parameter outputLayerWidth must be greater than 0";
   if ((numHiddenLayers > 0) && (hiddenLayerWidth < 1)) throw "Cannot specify nonzero positive hidden layers but zero hidden layer width"
   this.biasNeuron = new Neuron();
-  this.biasNeuron.setCachedOutput(1);
+  this.biasNeuron.setCachedOutput(-1);
   this.neuronLayers = this.generateLayers(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, this.biasNeuron, 1);
   this.afterEvaluateCallback = function(network) {};
 };
@@ -211,6 +211,8 @@ DumbTrainer.prototype.calculateOutputError = function(outputNeurons, expectedVal
 
 DumbTrainer.prototype.trainOnce = function(trainingInput, trainingOutput, learningRate) {
   var neuronLayers = this.network.getLayers();
+  var totalError = 0;
+  var totalUpdates = 0;
   // We skip the input layer, layer 0, in the below loop:
   for (var layerIndex=neuronLayers.length-1; layerIndex > 0; layerIndex--) {
     var neuronLayer = neuronLayers[layerIndex];
@@ -220,22 +222,29 @@ DumbTrainer.prototype.trainOnce = function(trainingInput, trainingOutput, learni
         this.network.evaluate(trainingInput);
         var initialError = this.calculateOutputError(this.network.getOutputLayer(), trainingOutput);
         //log("Initial error: " + initialError);
-        neuron.weights[inputIndex] += learningRate;
+        totalError += initialError;
+        totalUpdates++;
+        var addAmount = (Math.random() - 0.5) * learningRate;
+        neuron.weights[inputIndex] += addAmount;
         this.network.evaluate(trainingInput);
         var afterAddingError = this.calculateOutputError(this.network.getOutputLayer(), trainingOutput);
-        if (afterAddingError > initialError) { // Adding didn't work, so let's instead subtract. We have to subtract twice the learningRate because we already added up above
-          neuron.weights[inputIndex] -= (2*learningRate);
+        if (afterAddingError > initialError) { // Adding didn't work
+          neuron.weights[inputIndex] -= addAmount;
+          //neuron.weights[inputIndex] -= (2*learningRate);
         }
       }
     };
   }
+  return totalError / totalUpdates;
 };
 
 DumbTrainer.prototype.train = function(times) {
+  var totalError = 0;
   for (var i=0; i < times; i++) {
     var index = Math.floor(Math.random() * this.trainingInputs.length);
-    this.trainOnce(this.trainingInputs[index], this.trainingOutputs[index], 0.01);
+    totalError += this.trainOnce(this.trainingInputs[index], this.trainingOutputs[index], 0.01);
   }
+  return totalError / times;
 };
 
 var NeuronNetworkRenderer = function(context, network) {
@@ -311,7 +320,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
     var destinationVector = new Vector(destinationCoordinates.x, destinationCoordinates.y);
     var originToDestination = originVector.subtract(destinationVector);
     //var scaled = originToDestination.scale(randomInRange(0.2, 0.3));
-    var scaled = originToDestination.scale((index % 2 == 0) ? 0.35 : 0.30);
+    //var scaled = originToDestination.scale((index % 2 == 0) ? 0.35 : 0.30);
+    var scaled = originToDestination.scale((index % 5) * 0.03 + 0.3);
     var result = destinationVector.add(scaled);
     return {x: result.x, y: result.y};
   };
@@ -346,7 +356,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
 
       var output = neuron.getOutput();
       this.context.fillStyle = "blue";
-      this.context.font = "8px " + fontName;
+      this.context.font = "9px " + fontName;
       var showOutput = showOutputs && (output != unsetValue);
       var showBias = neuron.weights.length > 0;
       if (showOutput && showBias) {
@@ -371,10 +381,10 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
   }
 };
 
-var inputWidth = 2;
-var outputWidth = 1;
-var hiddenLayers = 0;
-var hiddenWidth = 0;
+var inputWidth = 7;
+var outputWidth = 2;
+var hiddenLayers = 5;
+var hiddenWidth = 5;
 
 var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -393,8 +403,8 @@ var trainingSets = {
   }
 };
 
-var trainingSet = trainingSets.and;
-var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+var trainingSet = trainingSets.xor;
+//var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
 var canvas = document.getElementById("neuron-canvas");
 canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
@@ -404,9 +414,9 @@ var context = canvas.getContext("2d");
 var renderer = new NeuronNetworkRenderer(context, network);
 renderer.update(true);
 
-network.setAfterEvaluateCallback(function() {
+network.setAfterEvaluateCallback(_.debounce(function() {
   renderer.update(true);
-});
+}, 100));
 
 /*window.setInterval(function() {
   trainer.train(1);
