@@ -343,7 +343,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
   };
 
   // Clear the screen:
-  this.context.fillStyle = "#eeeeee";
+  this.context.fillStyle = "#ffffff";
   this.context.fillRect(0, 0, this.context.canvas.width, this.context.canvas.height);
   
   for (var layerIndex=0; layerIndex < layers.length; layerIndex++) {
@@ -359,10 +359,11 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 
           // Select the width and color of the lines between neurons:
           if (linesAreInputs) {
-            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(output), 2) + 0.1;
+            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(output), 4) + 0.1;
             this.context.strokeStyle = (output >= 0) ? "gray" : "red";
           } else if (linesAreWeights) {
-            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 2) + 0.1;
+            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 4) + 0.1;
+            //this.context.lineWidth = Math.exp(normalizeQuantityForColoring(weight)/10) + 0.1;
             this.context.strokeStyle = (weight >= 0) ? "green" : "red";
           }
           
@@ -395,7 +396,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
       this.context.font = "9px " + fontName;
       var showOutput = showOutputs && (output != unsetValue);
       var showBias = neuron.weights.length > 0;
-      var xOffset = 14;
+      var xOffset = 20;
       if (showOutput && showBias) {
         this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+xOffset, coordinates.y-3);
         this.context.fillText("Output: " + truncate(output, 2), coordinates.x+xOffset, coordinates.y+10);
@@ -411,7 +412,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
       this.context.arc(coordinates.x, coordinates.y, 5, 0, Math.PI*2, true); 
       this.context.closePath();
       this.context.fill();*/
-      this.context.drawImage(this.neuronImage, coordinates.x-16, coordinates.y-16);
+      this.context.drawImage(this.neuronImage, coordinates.x-25, coordinates.y-25, 50, 50);
     }
   }
 };
@@ -419,7 +420,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 var fastUpdateDemo = function() {
   var inputWidth = 7;
   var outputWidth = 4;
-  var hiddenLayers = 1;
+  var hiddenLayers = 2;
   var hiddenWidth = 3;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
@@ -455,11 +456,25 @@ var fastUpdateDemo = function() {
 
   window.setInterval(function() {
     trainer.train(1);
-  }, 15);
+  }, 30);
 
   window.setInterval(function() {
-    renderer.update(true, "weights");
+    if (document.doWeights) {
+      if (document.doWeights > 0.3) {
+        renderer.update(true, "weights");
+      } else {
+        renderer.update(true, "inputs");
+      }
+    } else {
+      document.doWeights = Math.random();
+    }
+    
+    
   }, 30);
+
+  window.setTimeout(function() {
+    location.reload();
+  }, 6000);
 };
 
 var xorTest = function() {
@@ -552,6 +567,6 @@ var devRun = function() {
   renderCallback();
 };
 
-xorTest();
+fastUpdateDemo();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
