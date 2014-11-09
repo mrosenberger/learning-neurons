@@ -254,6 +254,7 @@ var NeuronNetworkRenderer = function(context, network) {
   this.network = network;
 };
 
+// Compute the position of a neuron on the canvas, without using any free variables:
 NeuronNetworkRenderer.prototype.calculateNeuronPositionPure = function(canvasWidth, canvasHeight, layerIndex, numLayers, neuronIndex, numNeurons, horizontalPadding, verticalPadding) {
   var computeNthPosition = function(n, outOf, pixels) {
     var intervalPixels = pixels / (outOf);
@@ -269,6 +270,7 @@ NeuronNetworkRenderer.prototype.calculateNeuronPositionPure = function(canvasWid
   };
 };
 
+// Calculate the position of a neuron onscreen, utilizing knowledge about member network:
 NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, neuronIndex) {
   return this.calculateNeuronPositionPure(
     this.context.canvas.width, 
@@ -281,6 +283,9 @@ NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, n
     0);
 };
 
+// Update the screen. 
+// Show current output values if 'shownOutputs' is true
+// Pass 'weights' or 'inputs' as 'lineQuantity' to select the quantity shown on the inter-neuron lines
 NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 
   if (!_.contains(["weights", "inputs"], lineQuantity)) throw ("Invalid lineQuantity value: '" + lineQuantity + "'. Value must be 'weights' or 'inputs'");
@@ -289,6 +294,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 
   var fontName = "Arial";
   var layers = this.network.getLayers();
+
+  // Find the highest and lowest magnitude weights/inputs, for choosing inter-neuron line width:
   var highestQuantityMagnitude = -Infinity;
   var lowestQuantityMagnitude = Infinity;
   for (var layerIndex=0; layerIndex < layers.length; layerIndex++) {
@@ -308,8 +315,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
     }
   }
 
-  var normalizeQuantityForColoring = function(value) { // Normalizes using the above enclosed highest and lowest weights
-    //return (value - lowestWeightMagnitude) / highestQuantityMagnitude;
+ // Normalizes using the above enclosed highest and lowest weights:
+  var normalizeQuantityForColoring = function(value) {
     var a1 = lowestQuantityMagnitude;
     var a2 = highestQuantityMagnitude;
     var b1 = 0.0;
@@ -318,26 +325,24 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
     return b1 + ((s-a1)*(b2-b1)) / (a2-a1);
   };
 
+  // Truncate a number to a certain number of decimal points:
   var truncate = function(n, decimals) {
     return parseFloat(n).toFixed(decimals);
   };
 
-  var calculateLineTextPosition = function(originCoordinates, destinationCoordinates, index) { // Index is just used to switch between even and odd for spacing of weights
-    /*return { 
-      x: Math.floor((originCoordinates.x + destinationCoordinates.x) / 2.0),
-      y: Math.floor((originCoordinates.y + destinationCoordinates.y) / 2.0)
-    };*/
+  // Calculate where on the inter-neuron lines to position text:
+  var calculateLineTextPosition = function(originCoordinates, destinationCoordinates, index) {
+    // Index is just used to switch between even and odd for spacing of weights
     var originVector = new Vector(originCoordinates.x, originCoordinates.y);
     var destinationVector = new Vector(destinationCoordinates.x, destinationCoordinates.y);
     var originToDestination = originVector.subtract(destinationVector);
-    //var scaled = originToDestination.scale(randomInRange(0.2, 0.3));
-    //var scaled = originToDestination.scale((index % 2 == 0) ? 0.35 : 0.30);
-    var scaled = originToDestination.scale((index % 5) * 0.03 + 0.3);
+    var scaled = originToDestination.scale((index % 5) * 0.03 + 0.1);
     var result = destinationVector.add(scaled);
     return {x: result.x, y: result.y};
   };
 
-  this.context.fillStyle = "white";
+  // Clear the screen:
+  this.context.fillStyle = "#eeeeee";
   this.context.fillRect(0, 0, this.context.canvas.width, this.context.canvas.height);
   
   for (var layerIndex=0; layerIndex < layers.length; layerIndex++) {
@@ -350,8 +355,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
           var inputCoordinates = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
           var weight = neuron.weights[inputIndex];
           var output = neuron.inputs[inputIndex].getOutput();
-          //this.context.strokeStyle = "#cccccc";
-          
+
+          // Select the width and color of the lines between neurons:
           if (linesAreInputs) {
             this.context.lineWidth = Math.pow(normalizeQuantityForColoring(output), 6) + 0.1;
             this.context.strokeStyle = (output >= 0) ? "green" : "red";
@@ -360,12 +365,14 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
             this.context.strokeStyle = (weight >= 0) ? "green" : "red";
           }
           
+          // Draw lines between neurons:
           this.context.beginPath();
           this.context.moveTo(coordinates.x, coordinates.y);
           this.context.lineTo(inputCoordinates.x, inputCoordinates.y);
           this.context.closePath();
           this.context.stroke();
 
+          // Draw text on lines (after drawing lines, so that we write over them):
           if (linesAreInputs) {
             this.context.fillStyle = "black";
             this.context.font = "8px " + fontName;
@@ -381,6 +388,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
         }
       }
 
+      // Draw text next to neurons:
       var output = neuron.getOutput();
       this.context.fillStyle = "black";
       this.context.font = "9px " + fontName;
@@ -395,15 +403,12 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
         this.context.fillText("Output: " + truncate(output, 2), coordinates.x+10, coordinates.y+3);
       }
 
+      // Draw the neuron:
       this.context.fillStyle = "black";
-      //this.context.strokeStyle = "black";
-      //this.context.lineWidth = 1;
       this.context.beginPath();
       this.context.arc(coordinates.x, coordinates.y, 5, 0, Math.PI*2, true); 
       this.context.closePath();
-      //this.context.stroke();
       this.context.fill();
-
     }
   }
 };
@@ -441,13 +446,15 @@ var context = canvas.getContext("2d");
 var renderer = new NeuronNetworkRenderer(context, network);
 
 var renderCallback = _.debounce(function() {
-  renderer.update(true, "weights");
+  renderer.update(true, "inputs");
 }, 100);
+
+renderCallback();
 
 network.setAfterEvaluateCallback(renderCallback);
 
 //network.evaluate();
-renderCallback();
+
 /*window.setInterval(function() {
   trainer.train(1);
   renderer.update(true);
