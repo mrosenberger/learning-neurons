@@ -358,10 +358,10 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 
           // Select the width and color of the lines between neurons:
           if (linesAreInputs) {
-            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(output), 6) + 0.1;
+            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(output), 2) + 0.1;
             this.context.strokeStyle = (output >= 0) ? "gray" : "red";
           } else if (linesAreWeights) {
-            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(weight), 6) + 0.1;
+            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 2) + 0.0;
             this.context.strokeStyle = (weight >= 0) ? "green" : "red";
           }
           
@@ -414,8 +414,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 };
 
 var inputWidth = 7;
-var outputWidth = 3;
-var hiddenLayers = 2;
+var outputWidth = 4;
+var hiddenLayers = 1;
 var hiddenWidth = 5;
 
 var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
@@ -432,11 +432,15 @@ var trainingSets = {
   swap: {
     inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
     outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+  },
+  test7: {
+    inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
+    outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
   }
 };
 
-var trainingSet = trainingSets.and;
-//var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+var trainingSet = trainingSets.test7;
+var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
 var canvas = document.getElementById("neuron-canvas");
 canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
@@ -451,13 +455,16 @@ var renderCallback = _.debounce(function() {
 
 renderCallback();
 
-network.setAfterEvaluateCallback(renderCallback);
+//network.setAfterEvaluateCallback(renderCallback);
 
 //network.evaluate();
 
-/*window.setInterval(function() {
+window.setInterval(function() {
   trainer.train(1);
-  renderer.update(true);
-}, 1000);*/
+}, 15);
+
+window.setInterval(function() {
+  renderer.update(true, "weights");
+}, 30);
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
