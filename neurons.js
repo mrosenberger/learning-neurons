@@ -1,5 +1,7 @@
 // Vector class
 
+var kawaii = document.getElementById("kawaiineuron");
+
 var Vector = function(x, y) {
   this.x = x;
   this.y = y;
@@ -394,21 +396,23 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
       this.context.font = "9px " + fontName;
       var showOutput = showOutputs && (output != unsetValue);
       var showBias = neuron.weights.length > 0;
+      var xOffset = 14;
       if (showOutput && showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+10, coordinates.y-3);
-        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+10, coordinates.y+10);
+        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+xOffset, coordinates.y-3);
+        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+xOffset, coordinates.y+10);
       } else if (showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+10, coordinates.y+3);
+        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+xOffset, coordinates.y+3);
       } else if (showOutput) {
-        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+10, coordinates.y+3);
+        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+xOffset, coordinates.y+3);
       }
 
       // Draw the neuron:
-      this.context.fillStyle = "black";
+      /*this.context.fillStyle = "black";
       this.context.beginPath();
       this.context.arc(coordinates.x, coordinates.y, 5, 0, Math.PI*2, true); 
       this.context.closePath();
-      this.context.fill();
+      this.context.fill();*/
+      this.context.drawImage(kawaii, coordinates.x-16, coordinates.y-16);
     }
   }
 };
@@ -417,7 +421,7 @@ var fastUpdateDemo = function() {
   var inputWidth = 7;
   var outputWidth = 4;
   var hiddenLayers = 1;
-  var hiddenWidth = 5;
+  var hiddenWidth = 3;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -497,12 +501,12 @@ var devRun = function() {
   var renderer = new NeuronNetworkRenderer(context, network);
 
   var renderCallback = _.debounce(function() {
-    renderer.update(true, "weights");
+    renderer.update(true, "inputs");
   }, 100);
   network.setAfterEvaluateCallback(renderCallback);
   renderCallback();
 };
 
-devRun();
+fastUpdateDemo();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
