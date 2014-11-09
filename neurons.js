@@ -42,7 +42,8 @@ var sigmoid = function(n) {
 };
 
 var activation = function(n) {
-  return sigmoid(n);
+  return n > 0 ? 1 : 0;
+  //return sigmoid(n);
 };
 
 var activationPrime = function(n) {
@@ -107,17 +108,17 @@ var NeuronNetwork = function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth
   if (outputLayerWidth < 1) throw "Parameter outputLayerWidth must be greater than 0";
   if ((numHiddenLayers > 0) && (hiddenLayerWidth < 1)) throw "Cannot specify nonzero positive hidden layers but zero hidden layer width"
   this.biasNeuron = new Neuron();
-  this.biasNeuron.setCachedOutput(-1);
-  this.neuronLayers = this.generateLayers(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, this.biasNeuron, 1);
-  this.afterEvaluateCallback = function(network) {};
+  this.biasNeuron.setCachedOutput(1);
+  this.neuronLayers = this.generateLayers(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, this.biasNeuron);
+  this.afterEvaluateCallback = function() {};
 };
 
-NeuronNetwork.prototype.generateLayers= function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, biasNeuron, biasNeuronInitialWeight) {
+NeuronNetwork.prototype.generateLayers= function(inputLayerWidth, outputLayerWidth, hiddenLayerWidth, numHiddenLayers, biasNeuron) {
   var generateLayer = function(layerWidth, addBiasNeuron) {
     log("Generating layer of width " + layerWidth);
     return _.map(_.range(layerWidth), function(val) {
       var neur = new Neuron();
-      if (addBiasNeuron) neur.addInputNeuron(biasNeuron, biasNeuronInitialWeight);
+      if (addBiasNeuron) neur.addInputNeuron(biasNeuron, randomInRange(-0.1, 0.1));
       return neur;
     });
   };
@@ -204,9 +205,10 @@ DumbTrainer.prototype.calculateOutputError = function(outputNeurons, expectedVal
     function(pair) { return calculateError(pair[1], pair[0]); }
   );*/
   for (var i=0; i < outputNeurons.length; i++) {
-    error += calculateError(expectedValues[i], outputNeurons[i].getOutput());
+    //error += calculateError(expectedValues[i], outputNeurons[i].getOutput());
+    error += Math.pow(expectedValues[i] - outputNeurons[i].getOutput(), 2);
   }
-  return error;
+  return 0.5*error;
 };
 
 DumbTrainer.prototype.trainOnce = function(trainingInput, trainingOutput, learningRate) {
@@ -279,28 +281,37 @@ NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, n
     0);
 };
 
-NeuronNetworkRenderer.prototype.update = function(showOutputs) {
+NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
+
+  if (!_.contains(["weights", "inputs"], lineQuantity)) throw ("Invalid lineQuantity value: '" + lineQuantity + "'. Value must be 'weights' or 'inputs'");
+  var linesAreInputs = (lineQuantity === "inputs");
+  var linesAreWeights = (lineQuantity === "weights");
 
   var fontName = "Arial";
   var layers = this.network.getLayers();
-  var highestWeightMagnitude = -Infinity;
-  var lowestWeightMagnitude = Infinity;
+  var highestQuantityMagnitude = -Infinity;
+  var lowestQuantityMagnitude = Infinity;
   for (var layerIndex=0; layerIndex < layers.length; layerIndex++) {
     var layer = layers[layerIndex];
     for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
       var neuron = layer[neuronIndex];
-      for (var weightIndex=1; weightIndex < neuron.weights.length; weightIndex++) {
-        var absWeight = Math.abs(neuron.weights[weightIndex]);
-        if (absWeight > highestWeightMagnitude) highestWeightMagnitude = absWeight;
-        if (absWeight < lowestWeightMagnitude) lowestWeightMagnitude = absWeight;
+      for (var inputIndex=1; inputIndex < neuron.weights.length; inputIndex++) {
+        var absQuantity = 0;
+        if (linesAreInputs) {
+          absQuantity = Math.abs(neuron.inputs[inputIndex].getOutput());
+        } else if (linesAreWeights) {
+          absQuantity = Math.abs(neuron.weights[inputIndex]);
+        }
+        if (absQuantity > highestQuantityMagnitude) highestQuantityMagnitude = absQuantity;
+        if (absQuantity < lowestQuantityMagnitude) lowestQuantityMagnitude = absQuantity;
       }
     }
   }
 
-  var normalizeWeightForColoring = function(value) { // Normalizes using the above enclosed highest and lowest weights
-    //return (value - lowestWeightMagnitude) / highestWeightMagnitude;
-    var a1 = lowestWeightMagnitude;
-    var a2 = highestWeightMagnitude;
+  var normalizeQuantityForColoring = function(value) { // Normalizes using the above enclosed highest and lowest weights
+    //return (value - lowestWeightMagnitude) / highestQuantityMagnitude;
+    var a1 = lowestQuantityMagnitude;
+    var a2 = highestQuantityMagnitude;
     var b1 = 0.0;
     var b2 = 1.0;
     var s = Math.abs(value);
@@ -311,7 +322,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
     return parseFloat(n).toFixed(decimals);
   };
 
-  var inputWeightPosition = function(originCoordinates, destinationCoordinates, index) { // Index is just used to switch between even and odd for spacing of weights
+  var calculateLineTextPosition = function(originCoordinates, destinationCoordinates, index) { // Index is just used to switch between even and odd for spacing of weights
     /*return { 
       x: Math.floor((originCoordinates.x + destinationCoordinates.x) / 2.0),
       y: Math.floor((originCoordinates.y + destinationCoordinates.y) / 2.0)
@@ -335,27 +346,43 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
       var neuron = layer[neuronIndex];
       var coordinates = this.calculateNeuronPosition(layerIndex, neuronIndex);
       if (layerIndex > 0) {
-        for (var weightIndex=1; weightIndex < neuron.weights.length; weightIndex++) {
-          var inputCoordinates = this.calculateNeuronPosition(layerIndex-1, weightIndex-1);
-          var weight = neuron.weights[weightIndex];
+        for (var inputIndex=1; inputIndex < neuron.weights.length; inputIndex++) {
+          var inputCoordinates = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
+          var weight = neuron.weights[inputIndex];
+          var output = neuron.inputs[inputIndex].getOutput();
           //this.context.strokeStyle = "#cccccc";
-          this.context.strokeStyle = (weight >= 0) ? "green" : "red";
-          this.context.lineWidth = normalizeWeightForColoring(weight) * 2 + 0.1;
+          
+          if (linesAreInputs) {
+            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(output), 6) + 0.1;
+            this.context.strokeStyle = (output >= 0) ? "green" : "red";
+          } else if (linesAreWeights) {
+            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(weight), 6) + 0.1;
+            this.context.strokeStyle = (weight >= 0) ? "green" : "red";
+          }
+          
           this.context.beginPath();
           this.context.moveTo(coordinates.x, coordinates.y);
           this.context.lineTo(inputCoordinates.x, inputCoordinates.y);
           this.context.closePath();
           this.context.stroke();
 
-          this.context.fillStyle = "black";
-          this.context.font = "8px " + fontName;
-          var weightPos = inputWeightPosition(inputCoordinates, coordinates, weightIndex);
-          this.context.fillText(truncate(weight, 2), weightPos.x-7, weightPos.y);
+          if (linesAreInputs) {
+            this.context.fillStyle = "black";
+            this.context.font = "8px " + fontName;
+            var weightPos = calculateLineTextPosition(inputCoordinates, coordinates, inputIndex);
+            this.context.fillText(truncate(output, 2), weightPos.x-7, weightPos.y);
+          } else if (linesAreWeights) {
+            this.context.fillStyle = "black";
+            this.context.font = "8px " + fontName;
+            var weightPos = calculateLineTextPosition(inputCoordinates, coordinates, inputIndex);
+            this.context.fillText(truncate(weight, 2), weightPos.x-7, weightPos.y);
+          }
+          
         }
       }
 
       var output = neuron.getOutput();
-      this.context.fillStyle = "blue";
+      this.context.fillStyle = "black";
       this.context.font = "9px " + fontName;
       var showOutput = showOutputs && (output != unsetValue);
       var showBias = neuron.weights.length > 0;
@@ -381,9 +408,9 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs) {
   }
 };
 
-var inputWidth = 7;
+var inputWidth = 4;
 var outputWidth = 2;
-var hiddenLayers = 5;
+var hiddenLayers = 1;
 var hiddenWidth = 5;
 
 var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
@@ -403,21 +430,24 @@ var trainingSets = {
   }
 };
 
-var trainingSet = trainingSets.xor;
+var trainingSet = trainingSets.and;
 //var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
 var canvas = document.getElementById("neuron-canvas");
 canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
-canvas.height = (2 + hiddenLayers) * 150;
+canvas.height = (2 + hiddenLayers) * 200;
 var context = canvas.getContext("2d");
 
 var renderer = new NeuronNetworkRenderer(context, network);
-renderer.update(true);
 
-network.setAfterEvaluateCallback(_.debounce(function() {
-  renderer.update(true);
-}, 100));
+var renderCallback = _.debounce(function() {
+  renderer.update(true, "weights");
+}, 100);
 
+network.setAfterEvaluateCallback(renderCallback);
+
+//network.evaluate();
+renderCallback();
 /*window.setInterval(function() {
   trainer.train(1);
   renderer.update(true);
