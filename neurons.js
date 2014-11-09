@@ -1,7 +1,5 @@
 // Vector class
 
-var kawaii = document.getElementById("kawaiineuron");
-
 var Vector = function(x, y) {
   this.x = x;
   this.y = y;
@@ -251,9 +249,10 @@ DumbTrainer.prototype.train = function(times) {
   return totalError / times;
 };
 
-var NeuronNetworkRenderer = function(context, network) {
+var NeuronNetworkRenderer = function(context, network, neuronImage) {
   this.context = context;
   this.network = network;
+  this.neuronImage = neuronImage;
 };
 
 // Compute the position of a neuron on the canvas, without using any free variables:
@@ -281,7 +280,7 @@ NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, n
     this.network.getLayers().length, 
     neuronIndex,
     this.network.getLayers()[layerIndex].length,
-    20,
+    35,
     0);
 };
 
@@ -412,7 +411,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
       this.context.arc(coordinates.x, coordinates.y, 5, 0, Math.PI*2, true); 
       this.context.closePath();
       this.context.fill();*/
-      this.context.drawImage(kawaii, coordinates.x-16, coordinates.y-16);
+      this.context.drawImage(this.neuronImage, coordinates.x-16, coordinates.y-16);
     }
   }
 };
@@ -452,10 +451,56 @@ var fastUpdateDemo = function() {
   canvas.height = (2 + hiddenLayers) * 200;
   var context = canvas.getContext("2d");
 
-  var renderer = new NeuronNetworkRenderer(context, network);
+  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
 
   window.setInterval(function() {
     trainer.train(1);
+  }, 15);
+
+  window.setInterval(function() {
+    renderer.update(true, "weights");
+  }, 30);
+};
+
+var xorTest = function() {
+  var inputWidth = 2;
+  var outputWidth = 1;
+  var hiddenLayers = 1;
+  var hiddenWidth = 2;
+
+  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
+
+  var trainingSets = {
+    xor: {
+      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0],    [1],    [1],    [0]   ]
+    },
+    and: {
+      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0], [0], [0], [1]]
+    },
+    swap: {
+      inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
+      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    },
+    test7: {
+      inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
+      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+    }
+  };
+
+  var trainingSet = trainingSets.xor;
+  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+
+  var canvas = document.getElementById("neuron-canvas");
+  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
+  canvas.height = (2 + hiddenLayers) * 120 + 15*Math.max(inputWidth, outputWidth, hiddenWidth)*(hiddenLayers+2);
+  var context = canvas.getContext("2d");
+
+  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
+
+  window.setInterval(function() {
+    trainer.train(100);
   }, 15);
 
   window.setInterval(function() {
@@ -498,7 +543,7 @@ var devRun = function() {
   canvas.height = (2 + hiddenLayers) * 200;
   var context = canvas.getContext("2d");
 
-  var renderer = new NeuronNetworkRenderer(context, network);
+  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
 
   var renderCallback = _.debounce(function() {
     renderer.update(true, "inputs");
@@ -507,6 +552,6 @@ var devRun = function() {
   renderCallback();
 };
 
-fastUpdateDemo();
+xorTest();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
