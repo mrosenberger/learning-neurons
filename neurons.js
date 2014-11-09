@@ -42,8 +42,8 @@ var sigmoid = function(n) {
 };
 
 var activation = function(n) {
-  return n > 0 ? 1 : 0;
-  //return sigmoid(n);
+  //return n > 0 ? 1 : 0;
+  return sigmoid(n);
 };
 
 var activationPrime = function(n) {
@@ -358,10 +358,10 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
 
           // Select the width and color of the lines between neurons:
           if (linesAreInputs) {
-            this.context.lineWidth = Math.pow(normalizeQuantityForColoring(output), 2) + 0.1;
+            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(output), 2) + 0.1;
             this.context.strokeStyle = (output >= 0) ? "gray" : "red";
           } else if (linesAreWeights) {
-            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 2) + 0.0;
+            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 2) + 0.1;
             this.context.strokeStyle = (weight >= 0) ? "green" : "red";
           }
           
@@ -413,58 +413,96 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
   }
 };
 
-var inputWidth = 7;
-var outputWidth = 4;
-var hiddenLayers = 1;
-var hiddenWidth = 5;
+var fastUpdateDemo = function() {
+  var inputWidth = 7;
+  var outputWidth = 4;
+  var hiddenLayers = 1;
+  var hiddenWidth = 5;
 
-var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
+  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
-var trainingSets = {
-  xor: {
-    inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
-    outputs: [[0],    [1],    [1],    [0]   ]
-  },
-  and: {
-    inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
-    outputs: [[0], [0], [0], [1]]
-  },
-  swap: {
-    inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
-    outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
-  },
-  test7: {
-    inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
-    outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
-  }
+  var trainingSets = {
+    xor: {
+      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0],    [1],    [1],    [0]   ]
+    },
+    and: {
+      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0], [0], [0], [1]]
+    },
+    swap: {
+      inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
+      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    },
+    test7: {
+      inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
+      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+    }
+  };
+
+  var trainingSet = trainingSets.test7;
+  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+
+  var canvas = document.getElementById("neuron-canvas");
+  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
+  canvas.height = (2 + hiddenLayers) * 200;
+  var context = canvas.getContext("2d");
+
+  var renderer = new NeuronNetworkRenderer(context, network);
+
+  window.setInterval(function() {
+    trainer.train(1);
+  }, 15);
+
+  window.setInterval(function() {
+    renderer.update(true, "weights");
+  }, 30);
 };
 
-var trainingSet = trainingSets.test7;
-var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+var devRun = function() {
+  var inputWidth = 7;
+  var outputWidth = 4;
+  var hiddenLayers = 1;
+  var hiddenWidth = 5;
 
-var canvas = document.getElementById("neuron-canvas");
-canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
-canvas.height = (2 + hiddenLayers) * 200;
-var context = canvas.getContext("2d");
+  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
-var renderer = new NeuronNetworkRenderer(context, network);
+  var trainingSets = {
+    xor: {
+      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0],    [1],    [1],    [0]   ]
+    },
+    and: {
+      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0], [0], [0], [1]]
+    },
+    swap: {
+      inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
+      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    },
+    test7: {
+      inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
+      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+    }
+  };
 
-var renderCallback = _.debounce(function() {
-  renderer.update(true, "weights");
-}, 100);
+  var trainingSet = trainingSets.test7;
+  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
-renderCallback();
+  var canvas = document.getElementById("neuron-canvas");
+  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
+  canvas.height = (2 + hiddenLayers) * 200;
+  var context = canvas.getContext("2d");
 
-//network.setAfterEvaluateCallback(renderCallback);
+  var renderer = new NeuronNetworkRenderer(context, network);
 
-//network.evaluate();
+  var renderCallback = _.debounce(function() {
+    renderer.update(true, "weights");
+  }, 100);
+  network.setAfterEvaluateCallback(renderCallback);
+  renderCallback();
+};
 
-window.setInterval(function() {
-  trainer.train(1);
-}, 15);
-
-window.setInterval(function() {
-  renderer.update(true, "weights");
-}, 30);
+devRun();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
