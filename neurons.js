@@ -265,10 +265,10 @@ NeuronNetworkRenderer.prototype.calculateNeuronPositionPure = function(canvasWid
     return padding + computeNthPosition(n, outOf, pixels-(padding*2));
   };
   var padding = 0;
-  return {
-    x: computeNthPositionPadded(neuronIndex, numNeurons, canvasWidth, horizontalPadding),
-    y: computeNthPositionPadded(layerIndex, numLayers, canvasHeight, verticalPadding)
-  };
+  return new Vector(
+    computeNthPositionPadded(neuronIndex, numNeurons, canvasWidth, horizontalPadding),
+    computeNthPositionPadded(layerIndex, numLayers, canvasHeight, verticalPadding)
+  );
 };
 
 // Calculate the position of a neuron onscreen, utilizing knowledge about member network:
@@ -332,14 +332,12 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
   };
 
   // Calculate where on the inter-neuron lines to position text:
-  var calculateLineTextPosition = function(originCoordinates, destinationCoordinates, index) {
+  var calculateLineTextPosition = function(originVector, destinationVector, index) {
     // Index is just used to switch between even and odd for spacing of weights
-    var originVector = new Vector(originCoordinates.x, originCoordinates.y);
-    var destinationVector = new Vector(destinationCoordinates.x, destinationCoordinates.y);
     var originToDestination = originVector.subtract(destinationVector);
     var scaled = originToDestination.scale((index % 5) * 0.03 + 0.1);
     var result = destinationVector.add(scaled);
-    return {x: result.x, y: result.y};
+    return result;
   };
 
   // Clear the screen:
@@ -350,10 +348,10 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
     var layer = layers[layerIndex];
     for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
       var neuron = layer[neuronIndex];
-      var coordinates = this.calculateNeuronPosition(layerIndex, neuronIndex);
+      var currentCoordinatesVector = this.calculateNeuronPosition(layerIndex, neuronIndex);
       if (layerIndex > 0) {
         for (var inputIndex=1; inputIndex < neuron.weights.length; inputIndex++) {
-          var inputCoordinates = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
+          var inputCoordinatesVector = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
           var weight = neuron.weights[inputIndex];
           var output = neuron.inputs[inputIndex].getOutput();
 
@@ -369,8 +367,8 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
           
           // Draw lines between neurons:
           this.context.beginPath();
-          this.context.moveTo(coordinates.x, coordinates.y);
-          this.context.lineTo(inputCoordinates.x, inputCoordinates.y);
+          this.context.moveTo(currentCoordinatesVector.x, currentCoordinatesVector.y);
+          this.context.lineTo(inputCoordinatesVector.x, inputCoordinatesVector.y);
           this.context.closePath();
           this.context.stroke();
 
@@ -378,16 +376,31 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
           if (linesAreInputs) {
             this.context.fillStyle = "black";
             this.context.font = "8px " + fontName;
-            var weightPos = calculateLineTextPosition(inputCoordinates, coordinates, inputIndex);
+            var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
             this.context.fillText(truncate(output, 2), weightPos.x-7, weightPos.y);
           } else if (linesAreWeights) {
             this.context.fillStyle = "black";
             this.context.font = "8px " + fontName;
-            var weightPos = calculateLineTextPosition(inputCoordinates, coordinates, inputIndex);
+            var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
             this.context.fillText(truncate(weight, 2), weightPos.x-7, weightPos.y);
           }
           
         }
+      }
+
+      var scale = 1.0;
+
+      if ((this.neuronImage == null) || (this.neuronImage == undefined)) {
+        this.context.fillStyle = "black";
+        this.context.beginPath();
+        this.context.arc(currentCoordinatesVector.x, currentCoordinatesVector.y, 5, 0, Math.PI*2, true); 
+        this.context.closePath();
+        this.context.fill();
+      } else {
+        //this.context.drawImage(this.neuronImage, currentCoordinatesVector.x-(this.neuronImage.width/2), currentCoordinatesVector.y-(this.neuronImage.height/2));
+        var drawWidth = this.neuronImage.width*scale;
+        var drawHeight = this.neuronImage.height*scale;
+        this.context.drawImage(this.neuronImage, currentCoordinatesVector.x-(drawWidth/2), currentCoordinatesVector.y-(drawHeight/2), drawWidth, drawHeight);
       }
 
       // Draw text next to neurons:
@@ -396,23 +409,15 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
       this.context.font = "9px " + fontName;
       var showOutput = showOutputs && (output != unsetValue);
       var showBias = neuron.weights.length > 0;
-      var xOffset = 20;
+      var xOffset = this.neuronImage.width*scale/2;
       if (showOutput && showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+xOffset, coordinates.y-3);
-        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+xOffset, coordinates.y+10);
+        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y-3);
+        this.context.fillText("Output: " + truncate(output, 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+10);
       } else if (showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), coordinates.x+xOffset, coordinates.y+3);
+        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+3);
       } else if (showOutput) {
-        this.context.fillText("Output: " + truncate(output, 2), coordinates.x+xOffset, coordinates.y+3);
+        this.context.fillText("Output: " + truncate(output, 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+3);
       }
-
-      // Draw the neuron:
-      /*this.context.fillStyle = "black";
-      this.context.beginPath();
-      this.context.arc(coordinates.x, coordinates.y, 5, 0, Math.PI*2, true); 
-      this.context.closePath();
-      this.context.fill();*/
-      this.context.drawImage(this.neuronImage, coordinates.x-25, coordinates.y-25, 50, 50);
     }
   }
 };
@@ -558,3 +563,36 @@ var devRun = function() {
 devRun();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
+
+
+// Optional display stuff:
+//   drawLines, lineQuantity, positiveLineColor, negativeLineColor, drawBiases, drawOutputs, 
+
+var rendererConfig = {
+  lines: "none", // One of 'none', 'weigths', or 'inputs'
+  positiveLineColor: "green",
+  negativeLineColor: "red",
+  drawBiases: true,
+  drawOutputs: true,
+  neuronImage: document.getElementById("kawaiineuron"),
+  neuronImageScale: 1.0
+};
+
+var rendererConfig = {
+  lines: {
+    render: true,
+    positiveColor: "green",
+    negativeColor: "red",
+    quantity: "weights",
+    font: "8px Arial",
+    fontColor: "black"
+  },
+  neurons: {
+    drawBiases: true,
+    drawOutputs: true,
+    font: "8px Arial",
+    fontColor: "black",
+    image: document.getElementById("kawaiineuron"),
+    imageScale: 1.0
+  }
+};
