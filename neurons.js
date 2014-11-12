@@ -459,22 +459,8 @@ var fastUpdateDemo = function() {
   }, 30);
 
   window.setInterval(function() {
-    if (document.doWeights) {
-      if (document.doWeights > 0.3) {
-        renderer.update(true, "weights");
-      } else {
-        renderer.update(true, "inputs");
-      }
-    } else {
-      document.doWeights = Math.random();
-    }
-    
-    
+    renderer.update(true, "weights");
   }, 30);
-
-  window.setTimeout(function() {
-    location.reload();
-  }, 6000);
 };
 
 var xorTest = function() {
@@ -524,10 +510,10 @@ var xorTest = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 7;
-  var outputWidth = 4;
+  var inputWidth = 2;
+  var outputWidth = 1;
   var hiddenLayers = 1;
-  var hiddenWidth = 5;
+  var hiddenWidth = 2;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -550,7 +536,7 @@ var devRun = function() {
     }
   };
 
-  var trainingSet = trainingSets.test7;
+  var trainingSet = trainingSets.xor;
   var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
@@ -560,13 +546,15 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
 
-  var renderCallback = _.debounce(function() {
-    renderer.update(true, "inputs");
-  }, 100);
-  network.setAfterEvaluateCallback(renderCallback);
-  renderCallback();
+  window.setInterval(function() {
+    trainer.train(1);
+  }, 30);
+
+  window.setInterval(function() {
+    renderer.update(true, "weights");
+  }, 30);
 };
 
-fastUpdateDemo();
+devRun();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
