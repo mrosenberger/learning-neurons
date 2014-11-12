@@ -249,10 +249,10 @@ DumbTrainer.prototype.train = function(times) {
   return totalError / times;
 };
 
-var NeuronNetworkRenderer = function(context, network, neuronImage) {
+var NeuronNetworkRenderer = function(context, network, config) {
   this.context = context;
   this.network = network;
-  this.neuronImage = neuronImage;
+  this.config = config;
 };
 
 // Compute the position of a neuron on the canvas, without using any free variables:
@@ -280,20 +280,19 @@ NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, n
     this.network.getLayers().length, 
     neuronIndex,
     this.network.getLayers()[layerIndex].length,
-    35,
-    0);
+    this.config.horizontalPadding,
+    this.config.verticalPadding);
 };
 
 // Update the screen. 
 // Show current output values if 'shownOutputs' is true
 // Pass 'weights' or 'inputs' as 'lineQuantity' to select the quantity shown on the inter-neuron lines
-NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
+NeuronNetworkRenderer.prototype.update = function() {
 
-  if (!_.contains(["weights", "inputs"], lineQuantity)) throw ("Invalid lineQuantity value: '" + lineQuantity + "'. Value must be 'weights' or 'inputs'");
-  var linesAreInputs = (lineQuantity === "inputs");
-  var linesAreWeights = (lineQuantity === "weights");
+  if (this.config.lines.render && !_.contains(["weights", "inputs"], this.config.lines.quantity)) throw ("Invalid lineQuantity value: '" + this.config.lines.quantity + "'. Value must be 'weights' or 'inputs'");
+  var linesAreInputs = (this.config.lines.quantity === "inputs");
+  var linesAreWeights = (this.config.lines.quantity === "weights");
 
-  var fontName = "Arial";
   var layers = this.network.getLayers();
 
   // Find the highest and lowest magnitude weights/inputs, for choosing inter-neuron line width:
@@ -341,7 +340,7 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
   };
 
   // Clear the screen:
-  this.context.fillStyle = "#ffffff";
+  this.context.fillStyle = this.config.backgroundColor;
   this.context.fillRect(0, 0, this.context.canvas.width, this.context.canvas.height);
   
   for (var layerIndex=0; layerIndex < layers.length; layerIndex++) {
@@ -349,20 +348,19 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
     for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
       var neuron = layer[neuronIndex];
       var currentCoordinatesVector = this.calculateNeuronPosition(layerIndex, neuronIndex);
-      if (layerIndex > 0) {
+      if ((layerIndex > 0) && this.config.lines.render) {
         for (var inputIndex=1; inputIndex < neuron.weights.length; inputIndex++) {
           var inputCoordinatesVector = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
           var weight = neuron.weights[inputIndex];
           var output = neuron.inputs[inputIndex].getOutput();
-
           // Select the width and color of the lines between neurons:
           if (linesAreInputs) {
             this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(output), 4) + 0.1;
-            this.context.strokeStyle = (output >= 0) ? "gray" : "red";
+            this.context.strokeStyle = (output >= 0) ? this.config.lines.positiveColor : this.config.lines.negativeColor;
           } else if (linesAreWeights) {
             this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 4) + 0.1;
             //this.context.lineWidth = Math.exp(normalizeQuantityForColoring(weight)/10) + 0.1;
-            this.context.strokeStyle = (weight >= 0) ? "green" : "red";
+            this.context.strokeStyle = (weight >= 0) ? this.config.lines.positiveColor : this.config.lines.negativeColor;
           }
           
           // Draw lines between neurons:
@@ -373,24 +371,23 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
           this.context.stroke();
 
           // Draw text on lines (after drawing lines, so that we write over them):
-          if (linesAreInputs) {
-            this.context.fillStyle = "black";
-            this.context.font = "8px " + fontName;
-            var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
-            this.context.fillText(truncate(output, 2), weightPos.x-7, weightPos.y);
-          } else if (linesAreWeights) {
-            this.context.fillStyle = "black";
-            this.context.font = "8px " + fontName;
-            var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
-            this.context.fillText(truncate(weight, 2), weightPos.x-7, weightPos.y);
+          if (this.config.lines.renderQuantity) {
+            if (linesAreInputs) {
+              this.context.fillStyle = this.config.lines.fontColor;
+              this.context.font = this.config.lines.font;
+              var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
+              this.context.fillText(truncate(output, this.config.lines.quantityDecimals), weightPos.x-7, weightPos.y);
+            } else if (linesAreWeights) {
+              this.context.fillStyle = this.config.lines.fontColor;
+              this.context.font = this.config.lines.font;
+              var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
+              this.context.fillText(truncate(weight, this.config.lines.quantityDecimals), weightPos.x-7, weightPos.y);
+            }
           }
-          
         }
       }
 
-      var scale = 1.0;
-
-      if ((this.neuronImage == null) || (this.neuronImage == undefined)) {
+      if ((this.config.neurons.image == null) || (this.config.neurons.image == undefined)) {
         this.context.fillStyle = "black";
         this.context.beginPath();
         this.context.arc(currentCoordinatesVector.x, currentCoordinatesVector.y, 5, 0, Math.PI*2, true); 
@@ -398,25 +395,25 @@ NeuronNetworkRenderer.prototype.update = function(showOutputs, lineQuantity) {
         this.context.fill();
       } else {
         //this.context.drawImage(this.neuronImage, currentCoordinatesVector.x-(this.neuronImage.width/2), currentCoordinatesVector.y-(this.neuronImage.height/2));
-        var drawWidth = this.neuronImage.width*scale;
-        var drawHeight = this.neuronImage.height*scale;
-        this.context.drawImage(this.neuronImage, currentCoordinatesVector.x-(drawWidth/2), currentCoordinatesVector.y-(drawHeight/2), drawWidth, drawHeight);
+        var drawWidth = this.config.neurons.image.width*this.config.neurons.imageScale;
+        var drawHeight = this.config.neurons.image.height*this.config.neurons.imageScale;
+        this.context.drawImage(this.config.neurons.image, currentCoordinatesVector.x-(drawWidth/2), currentCoordinatesVector.y-(drawHeight/2), drawWidth, drawHeight);
       }
 
       // Draw text next to neurons:
       var output = neuron.getOutput();
-      this.context.fillStyle = "black";
-      this.context.font = "9px " + fontName;
-      var showOutput = showOutputs && (output != unsetValue);
-      var showBias = neuron.weights.length > 0;
-      var xOffset = this.neuronImage.width*scale/2;
+      this.context.fillStyle = this.config.neurons.fontColor;
+      this.context.font = this.config.neurons.font;
+      var showOutput = this.config.neurons.drawOutputs && (output != unsetValue);
+      var showBias = this.config.neurons.drawBiases && (neuron.weights.length > 0);
+      //var xOffset = this.config.neurons.image.width*this.config.neurons.imageScale/2;
       if (showOutput && showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y-3);
-        this.context.fillText("Output: " + truncate(output, 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+10);
+        this.context.fillText(this.config.neurons.textBiases + truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y-3);
+        this.context.fillText(this.config.neurons.textOutputs + truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+10);
       } else if (showBias) {
-        this.context.fillText("Bias Weight: " + truncate(neuron.weights[0], 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+3);
+        this.context.fillText(this.config.neurons.textBiases + truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
       } else if (showOutput) {
-        this.context.fillText("Output: " + truncate(output, 2), currentCoordinatesVector.x+xOffset, currentCoordinatesVector.y+3);
+        this.context.fillText(this.config.neurons.textOutputs + truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
       }
     }
   }
@@ -515,10 +512,10 @@ var xorTest = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 2;
-  var outputWidth = 1;
+  var inputWidth = 7;
+  var outputWidth = 4;
   var hiddenLayers = 1;
-  var hiddenWidth = 2;
+  var hiddenWidth = 5;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -541,7 +538,7 @@ var devRun = function() {
     }
   };
 
-  var trainingSet = trainingSets.xor;
+  var trainingSet = trainingSets.test7;
   var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
@@ -549,14 +546,43 @@ var devRun = function() {
   canvas.height = (2 + hiddenLayers) * 200;
   var context = canvas.getContext("2d");
 
-  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
+  var rendererConfig = {
+    lines: {
+      render: true,
+      renderQuantity: false,
+      positiveColor: "green",
+      negativeColor: "red",
+      quantity: "weights",
+      font: "8px Consolas",
+      fontColor: "black",
+      quantityDecimals: 2
+    },
+    neurons: {
+      drawBiases: true,
+      drawOutputs: true,
+      textBiases: "wBias ",
+      textOutputs: "O: ",
+      decimalsBiases: 2,
+      decimalsOutputs: 2,
+      font: "10px Consolas",
+      fontColor: "black",
+      image: document.getElementById("kawaiineuron"),
+      imageScale: 1.0,
+      horizontalTextOffset: 20
+    },
+    backgroundColor: "white",
+    horizontalPadding: 50,
+    verticalPadding: 0
+  };
+
+  var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
   window.setInterval(function() {
     trainer.train(1);
   }, 30);
 
   window.setInterval(function() {
-    renderer.update(true, "weights");
+    renderer.update();
   }, 30);
 };
 
@@ -564,35 +590,3 @@ devRun();
 
 // To switch from xy to yx, switch the coordinates to be returned opposite, switch the size decision, and switch the "calculateNeuronPosition" stuff to be backwards
 
-
-// Optional display stuff:
-//   drawLines, lineQuantity, positiveLineColor, negativeLineColor, drawBiases, drawOutputs, 
-
-var rendererConfig = {
-  lines: "none", // One of 'none', 'weigths', or 'inputs'
-  positiveLineColor: "green",
-  negativeLineColor: "red",
-  drawBiases: true,
-  drawOutputs: true,
-  neuronImage: document.getElementById("kawaiineuron"),
-  neuronImageScale: 1.0
-};
-
-var rendererConfig = {
-  lines: {
-    render: true,
-    positiveColor: "green",
-    negativeColor: "red",
-    quantity: "weights",
-    font: "8px Arial",
-    fontColor: "black"
-  },
-  neurons: {
-    drawBiases: true,
-    drawOutputs: true,
-    font: "8px Arial",
-    fontColor: "black",
-    image: document.getElementById("kawaiineuron"),
-    imageScale: 1.0
-  }
-};
