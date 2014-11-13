@@ -288,7 +288,7 @@ NeuronNetworkRenderer.prototype.normalizeQuantityForColoring = function(value, l
 
   // Truncate a number to a certain number of decimal points:
 NeuronNetworkRenderer.prototype.truncate = function(n, decimals) {
-  return parseFloat(n).toFixed(Math.max(decimals, 0));
+  return parseFloat(n).toFixed(Math.max(Math.min(decimals, 20), 0));
 };
 
   // Calculate where on the inter-neuron lines to position text:
@@ -443,11 +443,11 @@ var devRun = function() {
     lines: {
       render: true,
       renderLabels: true,
-      positiveColor: "green",
-      negativeColor: "red",
+      positiveColor: "#169e16",
+      negativeColor: "#a60f0f",
       quantity: "weights",
       font: "8px Consolas",
-      fontColor: "black",
+      fontColor: "#000000",
       labelDecimals: 2
     },
     neurons: {
@@ -456,29 +456,29 @@ var devRun = function() {
       renderOutputs: true,
       textBiases: "wBias ",
       textOutputs: "O: ",
-      decimalsBiases: 4,
+      decimalsBiases: 3,
       decimalsOutputs: 3,
       font: "10px Consolas",
-      fontColor: "black",
+      fontColor: "#000d3d",
       neuronRadius: 5,
-      neuronColor: "orange",
+      neuronColor: "#5e1796",
       useImage: true,
       image: document.getElementById("kawaiineuron"),
       imageScale: 1.0,
-      horizontalTextOffset: 10
+      horizontalTextOffset: 15
     },
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     horizontalPadding: 50,
     verticalPadding: 0
   };
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  window.setInterval(function() {
+  /*window.setInterval(function() {
     trainer.train(1);
-  }, 60);
+  }, 500);*/
 
-  var targetFps = 70;
+  var targetFps = 10;
 
   var ticks = 0;
   var start = new Date();
@@ -498,6 +498,32 @@ var devRun = function() {
     .controller("NeuronController", ["$scope", function($scope) {
       $scope.rendererConfig = rendererConfig;
       $scope.lineQuantityChoices = ["weights", "inputs"];
+
+      $scope.contrastingColor = function(color) {
+        if (color[0] == "#") color = color.substring(1);
+        try {
+          return (luma(color) >= 165) ? '000' : 'fff';
+        } catch (e) {
+          return '000';
+        }
+      };
+
+      var luma = function(color) {
+        var rgb = (typeof color === 'string') ? hexToRGBArray(color) : color;
+        return (0.2126 * rgb[0]) + (0.7152 * rgb[1]) + (0.0722 * rgb[2]); // SMPTE C, Rec. 709 weightings
+      };
+
+      var hexToRGBArray = function(color) {
+        if (color.length === 3)
+            color = color.charAt(0) + color.charAt(0) + color.charAt(1) + color.charAt(1) + color.charAt(2) + color.charAt(2);
+        else if (color.length !== 6)
+            throw('Invalid hex color: ' + color);
+        var rgb = [];
+        for (var i = 0; i <= 2; i++)
+            rgb[i] = parseInt(color.substr(i * 2, 2), 16);
+        return rgb;
+      };
+
     }]);
 };
 

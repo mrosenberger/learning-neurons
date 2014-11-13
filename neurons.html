@@ -10,7 +10,7 @@
 
     <canvas id="neuron-canvas" tabindex="1"></canvas>
 
-    <div class="neuron-controls">
+    <div class="neuron-controls clearfix">
       <!-- Lines -->
 
       <div class="neuron-control">
@@ -19,15 +19,11 @@
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Positive line color</label>
-        <input class="neuron-control-input" colorpicker data-ng-style="{'background-color': rendererConfig.lines.positiveColor}" type="text" data-ng-model="rendererConfig.lines.positiveColor" data-ng-disabled="!rendererConfig.lines.render">
+        <input class="neuron-control-input" colorpicker data-ng-style="{'background-color': rendererConfig.lines.positiveColor, 'color': contrastingColor(rendererConfig.lines.positiveColor)}" type="text" data-ng-model="rendererConfig.lines.positiveColor" data-ng-disabled="!rendererConfig.lines.render">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Negative line color</label>
-        <input class="neuron-control-input" colorpicker data-ng-style="{'background-color': rendererConfig.lines.negativeColor}" type="text" data-ng-model="rendererConfig.lines.negativeColor" data-ng-disabled="!rendererConfig.lines.render">
-      </div>
-      <div class="neuron-control">
-        <label class="neuron-control-label">Render labels</label>
-        <input class="neuron-control-input" type="checkbox" data-ng-model="rendererConfig.lines.renderLabels" data-ng-disabled="!rendererConfig.lines.render">
+        <input class="neuron-control-input" colorpicker data-ng-style="{'background-color': rendererConfig.lines.negativeColor, 'color': contrastingColor(rendererConfig.lines.negativeColor)}" type="text" data-ng-model="rendererConfig.lines.negativeColor" data-ng-disabled="!rendererConfig.lines.render">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Line quantity</label>
@@ -35,18 +31,22 @@
         </select>
       </div>
       <div class="neuron-control">
+        <label class="neuron-control-label">Render labels</label>
+        <input class="neuron-control-input" type="checkbox" data-ng-model="rendererConfig.lines.renderLabels" data-ng-disabled="!rendererConfig.lines.render">
+      </div>
+      <div class="neuron-control">
         <label class="neuron-control-label">Label font</label>
         <input class="neuron-control-input" type="text" data-ng-model="rendererConfig.lines.font" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Label font color</label>
-        <input class="neuron-control-input" colorpicker type="text" data-ng-model="rendererConfig.lines.fontColor" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
+        <input class="neuron-control-input" colorpicker data-ng-style="{'color': rendererConfig.lines.fontColor, 'background-color': contrastingColor(rendererConfig.lines.fontColor)}" type="text" data-ng-model="rendererConfig.lines.fontColor" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Label decimals</label>
-        <input class="neuron-control-input" min="0" type="number" data-ng-model="rendererConfig.lines.labelDecimals" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
+        <input class="neuron-control-input" min="0" max="20" type="number" data-ng-model="rendererConfig.lines.labelDecimals" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
       </div>
-      
+
       <!-- Neurons -->
 
       <div class="neuron-control">
@@ -71,11 +71,11 @@
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Bias decimals</label>
-        <input class="neuron-control-input" min="0" type="number" data-ng-model="rendererConfig.neurons.decimalsBiases" data-ng-disabled="!rendererConfig.neurons.render || !rendererConfig.neurons.renderBiases">
+        <input class="neuron-control-input" min="0" max="20" type="number" data-ng-model="rendererConfig.neurons.decimalsBiases" data-ng-disabled="!rendererConfig.neurons.render || !rendererConfig.neurons.renderBiases">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Output decimals</label>
-        <input class="neuron-control-input" min="0" type="number" data-ng-model="rendererConfig.neurons.decimalsOutputs" data-ng-disabled="!rendererConfig.neurons.render || !rendererConfig.neurons.renderOutputs">
+        <input class="neuron-control-input" min="0" max="20" type="number" data-ng-model="rendererConfig.neurons.decimalsOutputs" data-ng-disabled="!rendererConfig.neurons.render || !rendererConfig.neurons.renderOutputs">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Font</label>
@@ -83,7 +83,7 @@
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Font color</label>
-        <input class="neuron-control-input" colorpicker type="text" data-ng-model="rendererConfig.neurons.fontColor" data-ng-disabled="!rendererConfig.neurons.render || !(rendererConfig.neurons.renderBiases || rendererConfig.neurons.renderOutputs)">
+        <input class="neuron-control-input" colorpicker data-ng-style="{'color': rendererConfig.neurons.fontColor, 'background-color': contrastingColor(rendererConfig.neurons.fontColor)}" type="text" data-ng-model="rendererConfig.neurons.fontColor" data-ng-disabled="!rendererConfig.neurons.render || !(rendererConfig.neurons.renderBiases || rendererConfig.neurons.renderOutputs)">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Neuron radius</label>
@@ -91,7 +91,7 @@
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Neuron color</label>
-        <input class="neuron-control-input" colorpicker type="text" data-ng-model="rendererConfig.neurons.neuronColor" data-ng-disabled="!rendererConfig.neurons.render || rendererconfig.neurons.useImage">
+        <input class="neuron-control-input" colorpicker data-ng-style="{'background-color': rendererConfig.neurons.neuronColor, 'color': contrastingColor(rendererConfig.neurons.neuronColor)}" type="text" data-ng-model="rendererConfig.neurons.neuronColor" data-ng-disabled="!rendererConfig.neurons.render || rendererconfig.neurons.useImage">
       </div>
       <div class="neuron-control">
         <label class="neuron-control-label">Use neuron image</label>
@@ -107,6 +107,7 @@
       </div>
     </div>
 
+    <!-- style="filter:url(#dropshadow);" inside path element -->
     <div class="footer">
       <svg xmlns="http://www.w3.org/2000/svg" width="100px" height="100px" viewBox="0 0 266 266" style="position: absolute; margin-left: 20px;">
         <filter id="dropshadow" height="130%">
@@ -118,8 +119,7 @@
           </feMerge>
         </filter>
         <path id="N"
-        fill="#eef" stroke-width="0"
-        style="filter:url(#dropshadow);"
+        fill="#aaa" stroke-width="0"
         d="M 24.00,35.00
            C 23.67,17.67 40.00,10.50 45.50,10.00
              40.75,9.50 32.50,10.50 23.00,16.00
