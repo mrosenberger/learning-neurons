@@ -43,6 +43,10 @@ body {
   color: #ccc !important;
 }
 
+.neuron-control-input[type="checkbox"] {
+
+}
+
 .footer {
   margin: 50px;
   text-align: left;

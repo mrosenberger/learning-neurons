@@ -474,11 +474,11 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  /*window.setInterval(function() {
+  window.setInterval(function() {
     trainer.train(1);
-  }, 500);*/
+  }, 30);
 
-  var targetFps = 10;
+  var targetFps = 70;
 
   var ticks = 0;
   var start = new Date();
