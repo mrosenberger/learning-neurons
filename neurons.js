@@ -494,7 +494,7 @@ var devRun = function() {
     }
   }, (1000/targetFps));
 
-  angular.module("neuronApp", [])
+  angular.module("neuronApp", ["colorpicker.module"])
     .controller("NeuronController", ["$scope", function($scope) {
       $scope.rendererConfig = rendererConfig;
       $scope.lineQuantityChoices = ["weights", "inputs"];
