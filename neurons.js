@@ -197,15 +197,7 @@ var DumbTrainer = function(network, trainingInputs, trainingOutputs) {
 DumbTrainer.prototype.calculateOutputError = function(outputNeurons, expectedValues) {
   if (outputNeurons.length != expectedValues.length) throw "Output neurons and expected values must be of same length"
   var error = 0;
-
-  /*return _.map(
-    _.zip(
-      _.map(outputNeurons, function(outputNeuron) { return outputNeuron.getOutput(); }), 
-      expectedValues), 
-    function(pair) { return calculateError(pair[1], pair[0]); }
-  );*/
   for (var i=0; i < outputNeurons.length; i++) {
-    //error += calculateError(expectedValues[i], outputNeurons[i].getOutput());
     error += Math.pow(expectedValues[i] - outputNeurons[i].getOutput(), 2);
   }
   return 0.5*error;
@@ -284,6 +276,30 @@ NeuronNetworkRenderer.prototype.calculateNeuronPosition = function(layerIndex, n
     this.config.verticalPadding);
 };
 
+ // Normalizes using the above enclosed highest and lowest weights:
+NeuronNetworkRenderer.prototype.normalizeQuantityForColoring = function(value, lowestMagnitude, highestMagnitude) {
+  var a1 = lowestMagnitude;
+  var a2 = highestMagnitude;
+  var b1 = 0.0;
+  var b2 = 1.0;
+  var s = Math.abs(value);
+  return b1 + ((s-a1)*(b2-b1)) / (a2-a1);
+};
+
+  // Truncate a number to a certain number of decimal points:
+NeuronNetworkRenderer.prototype.truncate = function(n, decimals) {
+  return parseFloat(n).toFixed(Math.max(decimals, 0));
+};
+
+  // Calculate where on the inter-neuron lines to position text:
+ NeuronNetworkRenderer.prototype.calculateLineTextPosition = function(originVector, destinationVector, index) {
+  // Index is just used to switch between even and odd for spacing of weights
+  var originToDestination = originVector.subtract(destinationVector);
+  var scaled = originToDestination.scale((index % 5) * 0.03 + 0.1);
+  var result = destinationVector.add(scaled);
+  return result;
+};
+
 // Update the screen. 
 // Show current output values if 'shownOutputs' is true
 // Pass 'weights' or 'inputs' as 'lineQuantity' to select the quantity shown on the inter-neuron lines
@@ -315,30 +331,6 @@ NeuronNetworkRenderer.prototype.update = function() {
     }
   }
 
- // Normalizes using the above enclosed highest and lowest weights:
-  var normalizeQuantityForColoring = function(value) {
-    var a1 = lowestQuantityMagnitude;
-    var a2 = highestQuantityMagnitude;
-    var b1 = 0.0;
-    var b2 = 1.0;
-    var s = Math.abs(value);
-    return b1 + ((s-a1)*(b2-b1)) / (a2-a1);
-  };
-
-  // Truncate a number to a certain number of decimal points:
-  var truncate = function(n, decimals) {
-    return parseFloat(n).toFixed(decimals);
-  };
-
-  // Calculate where on the inter-neuron lines to position text:
-  var calculateLineTextPosition = function(originVector, destinationVector, index) {
-    // Index is just used to switch between even and odd for spacing of weights
-    var originToDestination = originVector.subtract(destinationVector);
-    var scaled = originToDestination.scale((index % 5) * 0.03 + 0.1);
-    var result = destinationVector.add(scaled);
-    return result;
-  };
-
   // Clear the screen:
   this.context.fillStyle = this.config.backgroundColor;
   this.context.fillRect(0, 0, this.context.canvas.width, this.context.canvas.height);
@@ -348,20 +340,18 @@ NeuronNetworkRenderer.prototype.update = function() {
     for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
       var neuron = layer[neuronIndex];
       var currentCoordinatesVector = this.calculateNeuronPosition(layerIndex, neuronIndex);
+
+      // Draw lines and labels between neurons:
       if ((layerIndex > 0) && this.config.lines.render) {
         for (var inputIndex=1; inputIndex < neuron.weights.length; inputIndex++) {
           var inputCoordinatesVector = this.calculateNeuronPosition(layerIndex-1, inputIndex-1);
           var weight = neuron.weights[inputIndex];
           var output = neuron.inputs[inputIndex].getOutput();
+
           // Select the width and color of the lines between neurons:
-          if (linesAreInputs) {
-            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(output), 4) + 0.1;
-            this.context.strokeStyle = (output >= 0) ? this.config.lines.positiveColor : this.config.lines.negativeColor;
-          } else if (linesAreWeights) {
-            this.context.lineWidth = 3*Math.pow(normalizeQuantityForColoring(weight), 4) + 0.1;
-            //this.context.lineWidth = Math.exp(normalizeQuantityForColoring(weight)/10) + 0.1;
-            this.context.strokeStyle = (weight >= 0) ? this.config.lines.positiveColor : this.config.lines.negativeColor;
-          }
+          var labelValue = linesAreInputs ? output : (linesAreWeights ? weight : "unknown");
+          this.context.lineWidth = 3*Math.pow(this.normalizeQuantityForColoring(labelValue, lowestQuantityMagnitude, highestQuantityMagnitude), 4) + 0.1;
+          this.context.strokeStyle = (labelValue >= 0) ? this.config.lines.positiveColor : this.config.lines.negativeColor;
           
           // Draw lines between neurons:
           this.context.beginPath();
@@ -371,144 +361,47 @@ NeuronNetworkRenderer.prototype.update = function() {
           this.context.stroke();
 
           // Draw text on lines (after drawing lines, so that we write over them):
-          if (this.config.lines.renderQuantity) {
-            if (linesAreInputs) {
-              this.context.fillStyle = this.config.lines.fontColor;
-              this.context.font = this.config.lines.font;
-              var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
-              this.context.fillText(truncate(output, this.config.lines.quantityDecimals), weightPos.x-7, weightPos.y);
-            } else if (linesAreWeights) {
-              this.context.fillStyle = this.config.lines.fontColor;
-              this.context.font = this.config.lines.font;
-              var weightPos = calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
-              this.context.fillText(truncate(weight, this.config.lines.quantityDecimals), weightPos.x-7, weightPos.y);
-            }
+          if (this.config.lines.renderLabels) {
+            this.context.fillStyle = this.config.lines.fontColor;
+            this.context.font = this.config.lines.font;
+            var weightPos = this.calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
+            this.context.fillText(this.truncate(labelValue, this.config.lines.labelDecimals), weightPos.x-7, weightPos.y);
           }
         }
       }
 
-      if ((this.config.neurons.image == null) || (this.config.neurons.image == undefined)) {
-        this.context.fillStyle = "black";
-        this.context.beginPath();
-        this.context.arc(currentCoordinatesVector.x, currentCoordinatesVector.y, 5, 0, Math.PI*2, true); 
-        this.context.closePath();
-        this.context.fill();
-      } else {
-        //this.context.drawImage(this.neuronImage, currentCoordinatesVector.x-(this.neuronImage.width/2), currentCoordinatesVector.y-(this.neuronImage.height/2));
-        var drawWidth = this.config.neurons.image.width*this.config.neurons.imageScale;
-        var drawHeight = this.config.neurons.image.height*this.config.neurons.imageScale;
-        this.context.drawImage(this.config.neurons.image, currentCoordinatesVector.x-(drawWidth/2), currentCoordinatesVector.y-(drawHeight/2), drawWidth, drawHeight);
+      if (this.config.neurons.render) {
+        // Draw the neuron as a circle, or, if provided, as an image:
+        if ((this.config.neurons.image == null) || (this.config.neurons.image == undefined) || (!this.config.neurons.useImage)) {
+          this.context.fillStyle = this.config.neurons.neuronColor;
+          this.context.beginPath();
+          this.context.arc(currentCoordinatesVector.x, currentCoordinatesVector.y, this.config.neurons.neuronRadius, 0, Math.PI*2, true); 
+          this.context.closePath();
+          this.context.fill();
+        } else {
+          var drawWidth = this.config.neurons.image.width*this.config.neurons.imageScale;
+          var drawHeight = this.config.neurons.image.height*this.config.neurons.imageScale;
+          this.context.drawImage(this.config.neurons.image, currentCoordinatesVector.x-(drawWidth/2), currentCoordinatesVector.y-(drawHeight/2), drawWidth, drawHeight);
+        }
+
+        // Draw text next to neurons:
+        var output = neuron.getOutput();
+        this.context.fillStyle = this.config.neurons.fontColor;
+        this.context.font = this.config.neurons.font;
+        var showOutput = this.config.neurons.renderOutputs && (output != unsetValue);
+        var showBias = this.config.neurons.renderBiases && (neuron.weights.length > 0);
+        if (showOutput && showBias) {
+          this.context.fillText(this.config.neurons.textBiases + this.truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y-3);
+          this.context.fillText(this.config.neurons.textOutputs + this.truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+10);
+        } else if (showBias) {
+          this.context.fillText(this.config.neurons.textBiases + this.truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
+        } else if (showOutput) {
+          this.context.fillText(this.config.neurons.textOutputs + this.truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
+        }
       }
 
-      // Draw text next to neurons:
-      var output = neuron.getOutput();
-      this.context.fillStyle = this.config.neurons.fontColor;
-      this.context.font = this.config.neurons.font;
-      var showOutput = this.config.neurons.drawOutputs && (output != unsetValue);
-      var showBias = this.config.neurons.drawBiases && (neuron.weights.length > 0);
-      //var xOffset = this.config.neurons.image.width*this.config.neurons.imageScale/2;
-      if (showOutput && showBias) {
-        this.context.fillText(this.config.neurons.textBiases + truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y-3);
-        this.context.fillText(this.config.neurons.textOutputs + truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+10);
-      } else if (showBias) {
-        this.context.fillText(this.config.neurons.textBiases + truncate(neuron.weights[0], this.config.neurons.decimalsBiases), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
-      } else if (showOutput) {
-        this.context.fillText(this.config.neurons.textOutputs + truncate(output, this.config.neurons.decimalsOutputs), currentCoordinatesVector.x+this.config.neurons.horizontalTextOffset, currentCoordinatesVector.y+3);
-      }
     }
   }
-};
-
-var fastUpdateDemo = function() {
-  var inputWidth = 7;
-  var outputWidth = 4;
-  var hiddenLayers = 2;
-  var hiddenWidth = 3;
-
-  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
-
-  var trainingSets = {
-    xor: {
-      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0],    [1],    [1],    [0]   ]
-    },
-    and: {
-      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0], [0], [0], [1]]
-    },
-    swap: {
-      inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
-      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
-    },
-    test7: {
-      inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
-      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
-    }
-  };
-
-  var trainingSet = trainingSets.test7;
-  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
-
-  var canvas = document.getElementById("neuron-canvas");
-  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
-  canvas.height = (2 + hiddenLayers) * 200;
-  var context = canvas.getContext("2d");
-
-  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
-
-  window.setInterval(function() {
-    trainer.train(1);
-  }, 30);
-
-  window.setInterval(function() {
-    renderer.update(true, "weights");
-  }, 30);
-};
-
-var xorTest = function() {
-  var inputWidth = 2;
-  var outputWidth = 1;
-  var hiddenLayers = 1;
-  var hiddenWidth = 2;
-
-  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
-
-  var trainingSets = {
-    xor: {
-      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0],    [1],    [1],    [0]   ]
-    },
-    and: {
-      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0], [0], [0], [1]]
-    },
-    swap: {
-      inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
-      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
-    },
-    test7: {
-      inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
-      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
-    }
-  };
-
-  var trainingSet = trainingSets.xor;
-  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
-
-  var canvas = document.getElementById("neuron-canvas");
-  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
-  canvas.height = (2 + hiddenLayers) * 120 + 15*Math.max(inputWidth, outputWidth, hiddenWidth)*(hiddenLayers+2);
-  var context = canvas.getContext("2d");
-
-  var renderer = new NeuronNetworkRenderer(context, network, document.getElementById("kawaiineuron"));
-
-  window.setInterval(function() {
-    trainer.train(100);
-  }, 15);
-
-  window.setInterval(function() {
-    renderer.update(true, "weights");
-  }, 30);
 };
 
 var devRun = function() {
@@ -549,28 +442,32 @@ var devRun = function() {
   var rendererConfig = {
     lines: {
       render: true,
-      renderQuantity: false,
+      renderLabels: true,
       positiveColor: "green",
       negativeColor: "red",
       quantity: "weights",
       font: "8px Consolas",
       fontColor: "black",
-      quantityDecimals: 2
+      labelDecimals: 2
     },
     neurons: {
-      drawBiases: true,
-      drawOutputs: true,
+      render: true,
+      renderBiases: true,
+      renderOutputs: true,
       textBiases: "wBias ",
       textOutputs: "O: ",
-      decimalsBiases: 2,
-      decimalsOutputs: 2,
+      decimalsBiases: 4,
+      decimalsOutputs: 3,
       font: "10px Consolas",
       fontColor: "black",
+      neuronRadius: 5,
+      neuronColor: "orange",
+      useImage: true,
       image: document.getElementById("kawaiineuron"),
       imageScale: 1.0,
-      horizontalTextOffset: 20
+      horizontalTextOffset: 10
     },
-    backgroundColor: "white",
+    backgroundColor: "#fff",
     horizontalPadding: 50,
     verticalPadding: 0
   };
@@ -579,11 +476,29 @@ var devRun = function() {
 
   window.setInterval(function() {
     trainer.train(1);
-  }, 30);
+  }, 60);
 
+  var targetFps = 70;
+
+  var ticks = 0;
+  var start = new Date();
   window.setInterval(function() {
     renderer.update();
-  }, 30);
+    ticks++;
+    context.font = "10px Consolas";
+    context.fillStyle = "gray";
+    context.fillText("FPS: " + parseFloat(ticks / ((new Date() - start)/1000)).toFixed(0), 2, 10);
+    if (ticks > 100) {
+      start = new Date();
+      ticks = 0;
+    }
+  }, (1000/targetFps));
+
+  angular.module("neuronApp", [])
+    .controller("NeuronController", ["$scope", function($scope) {
+      $scope.rendererConfig = rendererConfig;
+      $scope.lineQuantityChoices = ["weights", "inputs"];
+    }]);
 };
 
 devRun();

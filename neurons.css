@@ -14,3 +14,30 @@ body {
 	margin-right: auto;
 	box-shadow: 0px 0px 50px 0.1px gray;
 }
+
+.neuron-control {
+  border: 1px solid black;
+  border-radius: 4px;
+  background: white;
+  width: 150px;
+  text-align: center;
+  padding: 10px;
+  margin: 5px;
+  display: inline-block;
+}
+
+.neuron-control-label {
+
+}
+
+.neuron-control-input {
+  
+}
+
+.neuron-control-input:disabled {
+  background-color: #bbb;
+}
+
+.footer {
+  text-align: left;
+}
