@@ -282,6 +282,7 @@ BackPropagationTrainer.prototype.trainOnce = function(trainingInput, trainingOut
         if (this.debugMode) log("target: " + targetValue);
         if (this.debugMode) log("actual: " + actualValue);
         var error = actualValue * (1.0 - actualValue) * (targetValue - actualValue);
+        neuron.setError(error);
         for (var inputIndex=0; inputIndex < neuron.inputs.length; inputIndex++) {
           var adjustment = learningRate * error * neuron.inputs[inputIndex].getOutput();
           neuron.weights[inputIndex] += adjustment;
@@ -289,6 +290,24 @@ BackPropagationTrainer.prototype.trainOnce = function(trainingInput, trainingOut
       }
     } else { // Not output layer
       if (this.debugMode) log("Training layer " + layerIndex + " containing " + layer.length + " neurons");
+      for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
+        var neuron = layer[neuronIndex];
+        var actualValue = neuron.getOutput();
+        var error = actualValue * (1.0 - actualValue);
+        var summedWeightsAndErrors = 0;
+        var nextLayer = layers[layerIndex+1];
+        for (var nextLayerNeuronIndex=0; nextLayerNeuronIndex<nextLayer.length; nextLayerNeuronIndex++) {
+          var nextLayerNeuron = nextLayer[nextLayerNeuronIndex];
+          var nextLayerNeuronWeight = nextLayerNeuron.weights[neuronIndex+1];
+          var nextLayerNeuronError = nextLayerNeuron.getError();
+          summedWeightsAndErrors += (nextLayerNeuronWeight * nextLayerNeuronError);
+        }
+        error *= summedWeightsAndErrors;
+        for (var inputIndex=0; inputIndex < neuron.inputs.length; inputIndex++) {
+          var adjustment = learningRate * error * neuron.inputs[inputIndex].getOutput();
+          neuron.weights[inputIndex] += adjustment;
+        }
+      }
     }
   }
 };
@@ -464,10 +483,10 @@ NeuronNetworkRenderer.prototype.update = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 3;
-  var outputWidth = 3;
-  var hiddenLayers = 0;
-  var hiddenWidth = 0;
+  var inputWidth = 2;
+  var outputWidth = 1;
+  var hiddenLayers = 1;
+  var hiddenWidth = 2;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -494,7 +513,7 @@ var devRun = function() {
     }
   };
 
-  var trainingSet = trainingSets.swap;
+  var trainingSet = trainingSets.xor;
   var trainer = new BackPropagationTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
@@ -537,12 +556,12 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  window.setInterval(function() {
+  /*window.setInterval(function() {
     trainer.train(10, 0.01);
-  }, 30);
+  }, 30);*/
 
   log("Results: ");
-  //trainer.train(100000, 0.01);
+  trainer.train(1000000, 0.1);
   _.each(trainingSet.inputs, function(input) {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
