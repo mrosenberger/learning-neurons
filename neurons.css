@@ -15,6 +15,10 @@ body {
 	box-shadow: 0px 0px 50px 0.1px gray;
 }
 
+.neuron-controls {
+  height: auto;
+}
+
 .neuron-control {
   border: 0;
   border-radius: 0px;
@@ -31,7 +35,6 @@ body {
 }
 
 .neuron-control-label {
-
 }
 
 .neuron-control-input {
@@ -48,11 +51,9 @@ body {
 }
 
 .footer {
-  margin: 50px;
-  text-align: left;
+  padding-top: 300px;
 }
 
 .clearfix {
-  overflow: auto;
-  zoom: 1;
+  clear: both;
 }

@@ -81,6 +81,7 @@ var Neuron = function() {
 	this.inputs = [];
   this.weights = [];
   this.cachedOutput = unsetValue;
+  this.errorValue = unsetValue;
 };
 
 Neuron.prototype.addInputNeuron = function(neuron, initialWeight) {
@@ -99,6 +100,14 @@ Neuron.prototype.resetCachedOutput = function() {
 
 Neuron.prototype.setCachedOutput = function(value) {
   this.cachedOutput = value;
+};
+
+Neuron.prototype.getError = function() {
+  return this.errorValue;
+};
+
+Neuron.prototype.setError = function(newError) {
+  this.errorValue = newError;
 };
 
 // NeuronNetwork implementation
@@ -193,7 +202,6 @@ var DumbTrainer = function(network, trainingInputs, trainingOutputs) {
   this.trainingOutputs = trainingOutputs;
 };
 
-
 DumbTrainer.prototype.calculateOutputError = function(outputNeurons, expectedValues) {
   if (outputNeurons.length != expectedValues.length) throw "Output neurons and expected values must be of same length"
   var error = 0;
@@ -218,7 +226,7 @@ DumbTrainer.prototype.trainOnce = function(trainingInput, trainingOutput, learni
         //log("Initial error: " + initialError);
         totalError += initialError;
         totalUpdates++;
-        var addAmount = (Math.random() - 0.5) * learningRate;
+        var addAmount = (Math.random() - 0.5) * learningRate / (1.0 / Math.abs(neuron.weights[inputIndex]));
         neuron.weights[inputIndex] += addAmount;
         this.network.evaluate(trainingInput);
         var afterAddingError = this.calculateOutputError(this.network.getOutputLayer(), trainingOutput);
@@ -239,6 +247,57 @@ DumbTrainer.prototype.train = function(times) {
     totalError += this.trainOnce(this.trainingInputs[index], this.trainingOutputs[index], 0.01);
   }
   return totalError / times;
+};
+
+// trainingInputs and trainingOutputs are two arrays of arrays - each sub-array is
+var BackPropagationTrainer = function(network, trainingInputs, trainingOutputs) {
+  if (network == undefined || network == null) throw "Parameter network must not be undefined or null";
+  if (_.isEmpty(trainingInputs)) throw "Parameter trainingInputs must not be empty";
+  if (_.isEmpty(trainingOutputs)) throw "Parameter trainingOutputs must not be empty";
+  if (_.isEmpty(network.getInputLayer())) throw "Network input layer must not be empty";
+  if (_.isEmpty(network.getOutputLayer())) throw "Network output layer must not be empty";
+  if (network.getInputLayer().length !== trainingInputs[0].length) throw "Network input layer and training inputs array items must be of same length";
+  if (network.getOutputLayer().length !== trainingOutputs[0].length) throw "Network output layer and training outputs array items must be of same length";
+  this.network = network;
+  this.trainingInputs = trainingInputs;
+  this.trainingOutputs = trainingOutputs;
+  this.debugMode = false;
+};
+
+BackPropagationTrainer.prototype.trainOnce = function(trainingInput, trainingOutput, learningRate) {
+  if (_.isEmpty(trainingInput)) throw "Parameter trainingInput cannot be empty, null, or undefined";
+  if (_.isEmpty(trainingOutput)) throw "Parameter trainingOutput cannot be empty, null, or undefined";
+  if (learningRate == null || learningRate == undefined) throw "Parameter learningRate cannot be undefined or null";
+
+  this.network.evaluate(trainingInput);
+  var layers = this.network.getLayers();
+  for (var layerIndex=(layers.length-1); layerIndex > 0; layerIndex--) { // Skip layer 0
+    var layer = layers[layerIndex];
+    if (layerIndex === layers.length-1) { // Output layer
+      if (this.debugMode) log("Training layer " + layerIndex + " (output layer) containing " + layer.length + " neurons");
+      for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
+        var neuron = layer[neuronIndex];
+        var targetValue = trainingOutput[neuronIndex];
+        var actualValue = neuron.getOutput();
+        if (this.debugMode) log("target: " + targetValue);
+        if (this.debugMode) log("actual: " + actualValue);
+        var error = actualValue * (1.0 - actualValue) * (targetValue - actualValue);
+        for (var inputIndex=0; inputIndex < neuron.inputs.length; inputIndex++) {
+          var adjustment = learningRate * error * neuron.inputs[inputIndex].getOutput();
+          neuron.weights[inputIndex] += adjustment;
+        }
+      }
+    } else { // Not output layer
+      if (this.debugMode) log("Training layer " + layerIndex + " containing " + layer.length + " neurons");
+    }
+  }
+};
+
+BackPropagationTrainer.prototype.train = function(times, learningRate) {
+  for (var i=0; i < times; i++) {
+    var index = Math.floor(Math.random() * this.trainingInputs.length);
+    this.trainOnce(this.trainingInputs[index], this.trainingOutputs[index], learningRate);
+  }
 };
 
 var NeuronNetworkRenderer = function(context, network, config) {
@@ -405,10 +464,10 @@ NeuronNetworkRenderer.prototype.update = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 7;
-  var outputWidth = 4;
-  var hiddenLayers = 1;
-  var hiddenWidth = 5;
+  var inputWidth = 2;
+  var outputWidth = 1;
+  var hiddenLayers = 0;
+  var hiddenWidth = 0;
 
   var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
@@ -421,6 +480,10 @@ var devRun = function() {
       inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
       outputs: [[0], [0], [0], [1]]
     },
+    nand: {
+      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[1], [1], [1], [0]]
+    },
     swap: {
       inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
       outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
@@ -431,8 +494,8 @@ var devRun = function() {
     }
   };
 
-  var trainingSet = trainingSets.test7;
-  var trainer = new DumbTrainer(network, trainingSet.inputs, trainingSet.outputs);
+  var trainingSet = trainingSets.and;
+  var trainer = new BackPropagationTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
   canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
@@ -474,10 +537,16 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  window.setInterval(function() {
-    trainer.train(1);
-  }, 30);
+  /*window.setInterval(function() {
+    trainer.train(100, 0.001);
+  }, 100);*/
 
+  log("Results: ");
+  trainer.train(1000000, 0.01);
+  _.each(trainingSet.inputs, function(input) {
+    var result = network.evaluate(input);
+    log("Expected: " + input + " Actual: " + result);
+  });
   var targetFps = 70;
 
   var ticks = 0;
