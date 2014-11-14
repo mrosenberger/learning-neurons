@@ -464,8 +464,8 @@ NeuronNetworkRenderer.prototype.update = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 2;
-  var outputWidth = 1;
+  var inputWidth = 3;
+  var outputWidth = 3;
   var hiddenLayers = 0;
   var hiddenWidth = 0;
 
@@ -494,7 +494,7 @@ var devRun = function() {
     }
   };
 
-  var trainingSet = trainingSets.and;
+  var trainingSet = trainingSets.swap;
   var trainer = new BackPropagationTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
@@ -542,7 +542,7 @@ var devRun = function() {
   }, 100);*/
 
   log("Results: ");
-  trainer.train(1000000, 0.01);
+  trainer.train(100000, 0.01);
   _.each(trainingSet.inputs, function(input) {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
