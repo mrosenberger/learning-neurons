@@ -547,7 +547,7 @@ var devRun = function() {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
   });
-  var targetFps = 50;
+  var targetFps = 55;
 
   var ticks = 0;
   var start = new Date();
@@ -572,13 +572,13 @@ var devRun = function() {
         if (color[0] == "#") color = color.substring(1);
         try {
           return (luma(color) >= 165) ? '000' : 'fff';
-        } catch (e) {
+        } catch (e) { // If user inputs something like "red" or "blue", just return white when the parsing error is thrown inside hexToRGBArray
           return '000';
         }
       };
 
       var luma = function(color) {
-        var rgb = (typeof color === 'string') ? hexToRGBArray(color) : color;
+        var rgb = (typeof color === "string") ? hexToRGBArray(color) : color;
         return (0.2126 * rgb[0]) + (0.7152 * rgb[1]) + (0.0722 * rgb[2]); // SMPTE C, Rec. 709 weightings
       };
 
@@ -586,7 +586,7 @@ var devRun = function() {
         if (color.length === 3)
             color = color.charAt(0) + color.charAt(0) + color.charAt(1) + color.charAt(1) + color.charAt(2) + color.charAt(2);
         else if (color.length !== 6)
-            throw('Invalid hex color: ' + color);
+            throw("Invalid hex color: " + color);
         var rgb = [];
         for (var i = 0; i <= 2; i++)
             rgb[i] = parseInt(color.substr(i * 2, 2), 16);
