@@ -276,37 +276,55 @@ BackPropagationTrainer.prototype.trainOnce = function(trainingInput, trainingOut
     if (layerIndex === layers.length-1) { // Output layer
       if (this.debugMode) log("Training layer " + layerIndex + " (output layer) containing " + layer.length + " neurons");
       for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
+
+        // Compute initial values:
         var neuron = layer[neuronIndex];
         var targetValue = trainingOutput[neuronIndex];
         var actualValue = neuron.getOutput();
         if (this.debugMode) log("target: " + targetValue);
         if (this.debugMode) log("actual: " + actualValue);
+
+        // Compute error based on derivative of activation function and difference between training value actual value:
         var error = actualValue * (1.0 - actualValue) * (targetValue - actualValue);
+
+        // Store that value into the neuron for later use by layers above us:
         neuron.setError(error);
+
+        // Update weights to the above layer:
         for (var inputIndex=0; inputIndex < neuron.inputs.length; inputIndex++) {
           var adjustment = learningRate * error * neuron.inputs[inputIndex].getOutput();
           neuron.weights[inputIndex] += adjustment;
         }
+
       }
     } else { // Not output layer
       if (this.debugMode) log("Training layer " + layerIndex + " containing " + layer.length + " neurons");
       for (var neuronIndex=0; neuronIndex < layer.length; neuronIndex++) {
+
+        // Compute initial values:
         var neuron = layer[neuronIndex];
         var actualValue = neuron.getOutput();
         var error = actualValue * (1.0 - actualValue);
         var summedWeightsAndErrors = 0;
         var nextLayer = layers[layerIndex+1];
+
+        // Collect errors multiplied by weights from the layer closer to the output from our current position:
         for (var nextLayerNeuronIndex=0; nextLayerNeuronIndex<nextLayer.length; nextLayerNeuronIndex++) {
           var nextLayerNeuron = nextLayer[nextLayerNeuronIndex];
           var nextLayerNeuronWeight = nextLayerNeuron.weights[neuronIndex+1];
           var nextLayerNeuronError = nextLayerNeuron.getError();
           summedWeightsAndErrors += (nextLayerNeuronWeight * nextLayerNeuronError);
         }
+
+        // Multiply the previously computed error value by the summed values we just collected:
         error *= summedWeightsAndErrors;
+
+        // Update weights to the above layer (currently works for input layer only):
         for (var inputIndex=0; inputIndex < neuron.inputs.length; inputIndex++) {
           var adjustment = learningRate * error * neuron.inputs[inputIndex].getOutput();
           neuron.weights[inputIndex] += adjustment;
         }
+
       }
     }
   }
@@ -443,7 +461,14 @@ NeuronNetworkRenderer.prototype.update = function() {
             this.context.fillStyle = this.config.lines.fontColor;
             this.context.font = this.config.lines.font;
             var weightPos = this.calculateLineTextPosition(inputCoordinatesVector, currentCoordinatesVector, inputIndex);
-            this.context.fillText(this.truncate(labelValue, this.config.lines.labelDecimals), weightPos.x-7, weightPos.y);
+            var labelTextValue = this.truncate(labelValue, this.config.lines.labelDecimals);
+            var labelText = "";
+            if (labelTextValue >= 0) {
+              labelText = " " + labelTextValue;
+            } else {
+              labelText = "" + labelTextValue;
+            }
+            this.context.fillText(labelText, weightPos.x-10, weightPos.y);
           }
         }
       }
@@ -556,12 +581,20 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  /*window.setInterval(function() {
-    trainer.train(10, 0.01);
-  }, 30);*/
+  window.setInterval(function() {
+    trainer.train(10, 1);
+  }, 30);
+
+  window.setInterval(function() {
+    log("Results: ");
+    _.each(trainingSet.inputs, function(input) {
+      var result = network.evaluate(input);
+      log("Expected: " + input + " Actual: " + result);
+    });
+  }, 100);
 
   log("Results: ");
-  trainer.train(1000000, 0.1);
+  //trainer.train(1000000, 1);
   _.each(trainingSet.inputs, function(input) {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
