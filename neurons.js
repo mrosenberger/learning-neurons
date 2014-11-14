@@ -537,17 +537,17 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
-  /*window.setInterval(function() {
-    trainer.train(100, 0.001);
-  }, 100);*/
+  window.setInterval(function() {
+    trainer.train(10, 0.01);
+  }, 30);
 
   log("Results: ");
-  trainer.train(100000, 0.01);
+  //trainer.train(100000, 0.01);
   _.each(trainingSet.inputs, function(input) {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
   });
-  var targetFps = 70;
+  var targetFps = 50;
 
   var ticks = 0;
   var start = new Date();
