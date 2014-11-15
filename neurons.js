@@ -535,6 +535,14 @@ var devRun = function() {
     test7: {
       inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
       outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+    },
+    mirrorThroughBottleneck2: {
+      inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0, 0], [0, 1], [1, 0], [1, 1]]
+    },
+    mirrorThroughBottleneck4: {
+      inputs:  [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]],
+      outputs: [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]]
     }
   };
 
@@ -582,23 +590,40 @@ var devRun = function() {
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
   window.setInterval(function() {
-    trainer.train(10, 1);
+    trainer.train(1000, 1);
   }, 30);
 
   window.setInterval(function() {
     log("Results: ");
-    _.each(trainingSet.inputs, function(input) {
+    var totalError = 0;
+    /*_.each(trainingSet.inputs, function(input) {
       var result = network.evaluate(input);
       log("Expected: " + input + " Actual: " + result);
-    });
+      var currentError = 0;
+      for (var i=0; i < input.length; i++) {
+        currentError += Math.abs(input[i] - result[i]);
+      }
+      totalError += currentError;
+    });*/
+    for (var i=0; i < trainingSet.inputs.length; i++) {
+      var trainingInput = trainingSet.inputs[i];
+      var trainingOutput = trainingSet.outputs[i];
+      var actualOutput = network.evaluate(trainingInput);
+      log("Input: " + trainingInput + " | Output: " + actualOutput);
+      for (var j=0; j < trainingOutput.length; j++) {
+        totalError += Math.abs(trainingOutput[j] - actualOutput[j]);
+      }
+    }
+    log("Total error: " + totalError);
+    log("Percent error: " + parseFloat(100 * totalError / (trainingSet.outputs.length * trainingSet.outputs[0].length)).toFixed(5) + "%");
   }, 100);
 
-  log("Results: ");
+  /*log("Results: ");
   //trainer.train(1000000, 1);
   _.each(trainingSet.inputs, function(input) {
     var result = network.evaluate(input);
     log("Expected: " + input + " Actual: " + result);
-  });
+  });*/
   var targetFps = 55;
 
   var ticks = 0;
