@@ -10,7 +10,7 @@
 
     <canvas id="neuron-canvas" tabindex="1"></canvas>
 
-    <div class="neuron-controls clearfix">
+    <div class="neuron-controls cf">
       <!-- Lines -->
 
       <div class="neuron-control">
@@ -60,8 +60,9 @@
           <input class="neuron-control-input" min="0" max="20" type="number" data-ng-model="rendererConfig.lines.labelDecimals" data-ng-disabled="!rendererConfig.lines.render || !rendererConfig.lines.renderLabels">
         </label>
       </div>
-
+    </div>
       <!-- Neurons -->
+    <div class="neuron-controls cf">
 
       <div class="neuron-control">
         <label class="neuron-control-label">
@@ -146,6 +147,15 @@
           Horizontal text offset
           <input class="neuron-control-input" type="number" data-ng-model="rendererConfig.neurons.horizontalTextOffset" data-ng-disabled="!rendererConfig.neurons.render">
         </label>
+      </div>
+    </div>
+
+    <div class="neuron-controls cf">
+      <div class="neuron-control" id="percent-error">
+      </div>
+      <div class="neuron-control" id="total-error">
+      </div>
+      <div class="neuron-control" id="training-iterations">
       </div>
     </div>
 
@@ -331,6 +341,7 @@
       </svg>
     </div>
     
+    <script src="jquery-1.11.1.js"></script>
     <script src="angular.js"></script>
     <script src="bootstrap-colorpicker-module.js"></script>
     <script src="underscore.js"></script>

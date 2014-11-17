@@ -508,50 +508,93 @@ NeuronNetworkRenderer.prototype.update = function() {
 };
 
 var devRun = function() {
-  var inputWidth = 2;
-  var outputWidth = 1;
-  var hiddenLayers = 1;
-  var hiddenWidth = 2;
-
-  var network = new NeuronNetwork(inputWidth, outputWidth, hiddenWidth, hiddenLayers);
 
   var trainingSets = {
     xor: {
       inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0],    [1],    [1],    [0]   ]
+      outputs: [[0],    [1],    [1],    [0]   ],
+      inputWidth: 2,
+      outputWidth: 1,
+      hiddenLayers: 1,
+      hiddenWidth: 2,
+      learningRate: 0.1
     },
     and: {
       inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0], [0], [0], [1]]
+      outputs: [[0], [0], [0], [1]],
+      inputWidth: 2,
+      outputWidth: 1,
+      hiddenLayers: 0,
+      hiddenWidth: 0,
+      learningRate: 0.1
+    },
+    or: {
+      inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      outputs: [[0], [1], [1], [1]],
+      inputWidth: 2,
+      outputWidth: 1,
+      hiddenLayers: 0,
+      hiddenWidth: 0,
+      learningRate: 0.1
     },
     nand: {
       inputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[1], [1], [1], [0]]
+      outputs: [[1], [1], [1], [0]],
+      inputWidth: 2,
+      outputWidth: 1,
+      hiddenLayers: 0,
+      hiddenWidth: 0,
+      learningRate: 0.1
     },
     swap: {
       inputs: [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
-      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+      outputs: [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
+      inputWidth: 3,
+      outputWidth: 3,
+      hiddenLayers: 0,
+      hiddenWidth: 0,
+      learningRate: 0.1
     },
     test7: {
       inputs: [[0, 1, 0, 0, 1, 0, 1], [1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 0, 1, 1], [0, 0, 1, 0, 0, 1, 1]],
-      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+      outputs: [[0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]],
+      inputWidth: 7,
+      outputWidth: 4,
+      hiddenLayers: 0,
+      hiddenWidth: 0,
+      learningRate: 0.1
     },
     mirrorThroughBottleneck2: {
       inputs:  [[0, 0], [0, 1], [1, 0], [1, 1]],
-      outputs: [[0, 0], [0, 1], [1, 0], [1, 1]]
+      outputs: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      inputWidth: 2,
+      outputWidth: 2,
+      hiddenLayers: 1,
+      hiddenWidth: 1,
+      learningRate: 0.1
     },
     mirrorThroughBottleneck4: {
       inputs:  [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]],
-      outputs: [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]]
+      outputs: [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]],
+      inputWidth: 4,
+      outputWidth: 4,
+      hiddenLayers: 1,
+      hiddenWidth: 3,
+      learningRate: 0.2
     }
   };
 
   var trainingSet = trainingSets.xor;
+
+  var network = new NeuronNetwork(trainingSet.inputWidth, trainingSet.outputWidth, trainingSet.hiddenWidth, trainingSet.hiddenLayers);
+
+  var learningRate = trainingSet.learningRate;
+
   var trainer = new BackPropagationTrainer(network, trainingSet.inputs, trainingSet.outputs);
 
   var canvas = document.getElementById("neuron-canvas");
-  canvas.width = Math.max(inputWidth, outputWidth, hiddenWidth) * 150;
-  canvas.height = (2 + hiddenLayers) * 200;
+  canvas.width = Math.max(trainingSet.inputWidth, trainingSet.outputWidth, trainingSet.hiddenWidth) * 150;
+  canvas.height = (2 + trainingSet.hiddenLayers) * 200;
   var context = canvas.getContext("2d");
 
   var rendererConfig = {
@@ -589,11 +632,19 @@ var devRun = function() {
 
   var renderer = new NeuronNetworkRenderer(context, network, rendererConfig);
 
+  var totalTrainings = 0;
+
   window.setInterval(function() {
-    trainer.train(1000, 1);
+    var trainingsPerCall = 100;
+    trainer.train(trainingsPerCall, learningRate);
+    totalTrainings += trainingsPerCall;
+    $("#training-iterations").text("Iterations: " + totalTrainings);
   }, 30);
 
   window.setInterval(function() {
+    var trunk = function(val) {
+      return parseFloat(val).toFixed(5);
+    };
     log("Results: ");
     var totalError = 0;
     /*_.each(trainingSet.inputs, function(input) {
@@ -609,13 +660,17 @@ var devRun = function() {
       var trainingInput = trainingSet.inputs[i];
       var trainingOutput = trainingSet.outputs[i];
       var actualOutput = network.evaluate(trainingInput);
-      log("Input: " + trainingInput + " | Output: " + actualOutput);
+      log("Input: " + trainingInput + " | Output: " + _.map(actualOutput, trunk));
       for (var j=0; j < trainingOutput.length; j++) {
         totalError += Math.abs(trainingOutput[j] - actualOutput[j]);
       }
     }
     log("Total error: " + totalError);
-    log("Percent error: " + parseFloat(100 * totalError / (trainingSet.outputs.length * trainingSet.outputs[0].length)).toFixed(5) + "%");
+    var totalErrorString = parseFloat(totalError).toFixed(5) + "";
+    var percentErrorString = parseFloat(100 * totalError / (trainingSet.outputs.length * trainingSet.outputs[0].length)).toFixed(5) + "%";
+    log("Percent error: " + percentErrorString);
+    $("#percent-error").text("Percent error: " + percentErrorString);
+    $("#total-error").text("Total error: " + totalErrorString);
   }, 100);
 
   /*log("Results: ");
